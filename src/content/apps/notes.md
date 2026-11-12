@@ -2,7 +2,7 @@
 name: Quartz Notes
 tagline: Quick notes and full notebooks, on shelves you design.
 summary: Quick notes and notebooks on shelves, with sync through your own server.
-status: in-development
+status: released
 stone: amethyst
 order: 4
 platforms: [phone, fold, tablet]
