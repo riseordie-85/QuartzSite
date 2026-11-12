@@ -6,9 +6,7 @@ status: in-development
 stone: rose
 order: 1
 platforms: [phone, fold, tablet]
-# The code is private, so there's no `repo:` here (it would link visitors to a 404).
-# To offer downloads, publish releases to a public repo and name it here, e.g.:
-# releases: riseordie-85/QuartzGallery-Releases
+repo: riseordie-85/QuartzGallery
 download: apk
 minAndroid: '13'
 features:

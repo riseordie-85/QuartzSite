@@ -6,9 +6,7 @@ status: in-development
 stone: citrine
 order: 2
 platforms: [tablet, fold, phone]
-# The code is private, so there's no `repo:` here (it would link visitors to a 404).
-# To offer downloads, publish releases to a public repo and name it here, e.g.:
-# releases: riseordie-85/QuartzEditor-Releases
+repo: riseordie-85/QuartzEditor
 download: apk
 minAndroid: '13'
 features:
