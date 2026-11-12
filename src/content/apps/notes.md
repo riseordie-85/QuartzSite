@@ -27,7 +27,6 @@ features:
     text: Save any page or quick note as a template, keeping its headers and text.
   - title: Home screen widgets
     text: A shelf of notebooks, a single notebook, your quick notes, or a toolbar for starting something new.
-    planned: true
 privacy:
   - No ads, no analytics and no tracking.
   - Notes are stored on your device. Sync only talks to a server you set up.
