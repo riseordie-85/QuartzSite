@@ -2,7 +2,7 @@
 name: Quartz Gallery
 tagline: A photo and video gallery that never goes online.
 summary: A private gallery with editing, video tools, bulk watermarks and an encrypted personal folder.
-status: in-development
+status: released
 stone: rose
 order: 1
 platforms: [phone, fold, tablet]
