@@ -18,7 +18,8 @@ export async function getStaticPaths() {
 const { app } = Astro.props;
 const d = app.data;
 const { Content } = await render(app);
-const release = await getLatestRelease(d.repo, d.download);
+const releasesRepo = d.releases ?? d.repo;
+const release = await getLatestRelease(releasesRepo, d.download);
 
 const others = (await getCollection('apps'))
   .filter((a) => a.id !== app.id)
@@ -65,7 +66,7 @@ const shots = await Promise.all(
       name={d.name}
       status={d.status}
       kind={d.download}
-      repo={d.repo}
+      repo={releasesRepo}
       minAndroid={d.minAndroid}
       release={release}
     />

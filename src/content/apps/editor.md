@@ -1,14 +1,36 @@
 ---
 name: Quartz Editor
-tagline: Layers, masks and brushes on your tablet.
-summary: A layer-based photo editor for photobashing and banner work, with .psd import.
+tagline: Layers, masks and Photoshop files on your tablet.
+summary: A layer-based photo editor that opens Photoshop files and works with pen, touch and keyboard.
 status: in-development
 stone: citrine
 order: 2
 platforms: [tablet, fold, phone]
+# The code is private, so there's no `repo:` here (it would link visitors to a 404).
+# To offer downloads, publish releases to a public repo and name it here, e.g.:
+# releases: riseordie-85/QuartzEditor-Releases
 download: apk
+minAndroid: '13'
+features:
+  - title: Layers the way you know them
+    text: Folders, masks, clipping masks, blend modes, layer styles and adjustment layers. Smart layers keep placed images at full size, with smart filters you can edit or hide later.
+  - title: Opens Photoshop files
+    text: Open .psd and .psb files with their folders, masks, shape layers, text and adjustment layers intact, and save back to the same file. Layered TIFFs open the same way.
+  - title: A full set of tools
+    text: Selections from lasso to magic wand and color range, free transform and warps, perspective crop, healing, clone, pen paths, shapes, text, brushes and gradients.
+  - title: AI that stays on the device
+    text: Select an object with a tap, select the subject or sky, remove things, and upscale 2× or 4×. Depth effects add lens blur, fog, new lighting or a new sky. All of it runs offline.
+  - title: Pen, touch, mouse and keyboard
+    text: Photoshop's keyboard shortcuts work, from B for brush to Ctrl+J and Ctrl+Shift+Alt+E. Menus open on pen hover, and modifier clicks behave as you'd expect.
+  - title: Fits the screen you're on
+    text: On a big tablet you get a desktop-style menu bar and an options bar. On a phone the panels slide in from the side. The panel column can be rearranged and stacked as tabs.
+  - title: Never lose work
+    text: Save projects with every layer kept. If the app closes with unsaved changes, they wait for you as a draft.
 privacy:
-  - No ads, no analytics and no tracking.
+  - The app has no internet access. It's removed from the build entirely.
+  - Every AI feature runs on the device. Your pictures never leave it.
+  - No ads, no accounts and no tracking.
+screenshotSlots: [tablet, fold, phone]
 ---
 
-A layer-based photo editor for tablets, with a slide-in panel layout on phones. It's for photobashing, cutouts and banner work: layers, masks, brushes, adjustments and filters.
+A Photoshop-style editor built for photobashing, cutouts and banner work. It's made first for tablets with a pen and keyboard, and it adapts down to an unfolded phone or a regular phone. Layered Photoshop files open with their structure intact, so you can pick up work started on a computer.

@@ -62,7 +62,13 @@ When a repo has a published release, the app page shows the version, date, size,
 
 To publish a version: in the app repo, go to **Releases → Draft a new release**, create a tag like `v1.0.0`, attach your signed APK, write the notes and publish. The site picks it up the next time it builds.
 
-If a repo is **private**, visitors can't download its release files. Either make the repo public, or keep it private and host APKs from `public/downloads/` instead.
+If an app's code is **private**, visitors can't download its release files or open its repo. Keep the code private and create a small **public** repo just for releases (for example `riseordie-85/QuartzGallery-Releases`). Publish releases there, and name it in the app's file:
+
+```yaml
+releases: riseordie-85/QuartzGallery-Releases
+```
+
+Leave `repo:` out for private code. It's only for public source links.
 
 ## Deploying to GoDaddy
 

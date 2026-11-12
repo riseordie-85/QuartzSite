@@ -1,27 +1,46 @@
 ---
 name: Quartz Gallery
-tagline: Your photos and videos, without ads or tracking.
-summary: A photo and video gallery with albums, editing and still capture from video.
+tagline: A photo and video gallery that never goes online.
+summary: A private gallery with editing, video tools, bulk watermarks and an encrypted personal folder.
 status: in-development
 stone: rose
 order: 1
 platforms: [phone, fold, tablet]
-repo: riseordie-85/QuartzGallery
+# The code is private, so there's no `repo:` here (it would link visitors to a 404).
+# To offer downloads, publish releases to a public repo and name it here, e.g.:
+# releases: riseordie-85/QuartzGallery-Releases
 download: apk
 minAndroid: '13'
 features:
-  - title: Photos and videos together
-    text: Browse everything on your phone, scrub through videos and save a still from any frame.
-  - title: Albums and favorites
-    text: Create, rename and delete albums, move items between them and mark favorites.
+  - title: Everything, organized
+    text: Photos and videos grouped by month, with search by name, album, date or type. Pinch the grid to resize it, and drag the fast-scroll handle to fly through years.
+  - title: Video, frame by frame
+    text: Scrub any video on its filmstrip, step a frame at a time and capture a full-resolution still. Trim clips without losing quality, or save them as GIFs or frames.
   - title: Editing built in
-    text: Crop, rotate at any angle, filters, adjustments, stickers and text. Edits save as a copy unless you choose to overwrite.
-  - title: Trash you can undo
-    text: Deleted items wait in the trash until you restore them or empty it.
+    text: Crop, straighten and expand the canvas. Adjust light and color, add filters, and remove backgrounds on the device. Edits save as a copy you can reopen and change later.
+  - title: Markup
+    text: Text in built-in, Google or your own fonts, with outlines, glow and curved text. Add shapes, arrows, stickers and emoji, and turn any cutout into a sticker.
+  - title: Watermarks in bulk
+    text: Save text or logo watermarks as presets. Select a batch of photos and watermark them all at once. Each gets a marked copy, and the originals stay untouched.
+  - title: A private personal folder
+    text: Move photos and videos out of the gallery into a folder locked by passcode, fingerprint or face. Files are encrypted on the device and can't be screenshotted or previewed in Recents.
+  - title: Two panels on folds and tablets
+    text: On an unfolded phone or tablet, the grid sits on one half and the photo or video on the other. The editor puts its tools beside the picture.
+  - title: Albums, favorites and trash
+    text: Albums are real folders, so other apps and your computer see the same order. Favorites use Android's own flag. Anything you delete can be restored for 30 days.
+  - title: Places, offline
+    text: See your photos on a built-in world map with town names, without sending your location anywhere.
+  - title: Free up space
+    text: Find your biggest files, exact duplicates, look-alike bursts and old screenshots, then clear them in one go.
+  - title: Keyboard shortcuts
+    text: Browse, favorite, edit and play video from a keyboard on a tablet, DeX or a Chromebook.
+  - title: The Quartz look
+    text: Crystal backgrounds, gradients and frosted glass bars, styled to match Quartz Launcher.
 privacy:
-  - No ads, no analytics and no tracking.
-  - Your photos stay on your device.
-screenshotSlots: [phone, tablet]
+  - The app has no internet access. It's removed from the build entirely.
+  - No ads, no accounts, no analytics and no tracking.
+  - Your photos, edits and map stay on your device. Background removal's model and Google Fonts are downloaded by Google Play services, not by the gallery.
+screenshotSlots: [phone, fold, tablet]
 ---
 
-A gallery for the photos and videos already on your phone. It's built to be quiet and quick, with no ads and nothing watching what you look at.
+A replacement for the gallery that came with your phone, for the photos and videos already on it. Everything happens on the device, from editing and search to the map and the duplicate finder. Nothing is uploaded, because the app can't go online.

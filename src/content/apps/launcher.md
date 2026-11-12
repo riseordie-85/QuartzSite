@@ -6,7 +6,7 @@ status: in-development
 stone: blue
 order: 3
 platforms: [fold, phone, tablet]
-repo: riseordie-85/QuartzLauncher
+# The code is private, so there's no `repo:` here. See gallery.md for how to offer downloads.
 download: apk
 privacy:
   - No ads, no tracking and no upsells.

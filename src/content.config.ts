@@ -17,8 +17,12 @@ const apps = defineCollection({
     // Position in the app list and on the crystal (1–6).
     order: z.number(),
     platforms: z.array(z.enum(['phone', 'fold', 'tablet', 'e-reader'])).default([]),
-    // GitHub repo as "owner/name". Used for the download box and source link.
+    // Public GitHub repo with the source code, as "owner/name". Shows a source link.
+    // Leave it out for private repos, so visitors don't hit a 404.
     repo: z.string().optional(),
+    // Public GitHub repo whose releases hold the downloads. Defaults to `repo`.
+    // Use this when the code is private: publish releases to a public repo instead.
+    releases: z.string().optional(),
     // What the download box offers: an Android APK, a firmware file, or nothing yet.
     download: z.enum(['apk', 'firmware', 'none']).default('none'),
     minAndroid: z.string().optional(),
