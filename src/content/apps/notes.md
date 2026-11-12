@@ -32,7 +32,16 @@ privacy:
   - No ads, no analytics and no tracking.
   - Notes are stored on your device. Sync only talks to a server you set up.
   - There's no Quartz account. The only sign-in is to your own sync server, if you use one.
-screenshotSlots: [phone, fold, tablet]
+screenshots:
+  - src: /screenshots/notes/notebook-unfolded.webp
+    alt: A lined notebook open across an unfolded phone, with one page on each side of the seam
+    device: fold
+  - src: /screenshots/notes/home-phone.webp
+    alt: The home screen with a shelf of notebooks above quick notes grouped by date
+    device: phone
+  - src: /screenshots/notes/quick-note-unfolded.webp
+    alt: Shelves and quick notes on the left with a quick note checklist open on the right
+    device: fold
 ---
 
 Quartz Notes is for both kinds of writing: the thought you need to get down in five seconds, and the notebook you keep adding to for months. Quick notes stay quick. Notebooks get shelves, page styles and room to spread out on a bigger screen.

@@ -215,7 +215,9 @@ const deviceName = { phone: 'Phone', fold: 'Unfolded phone', tablet: 'Tablet' };
     scroll-snap-align: start;
     background: var(--smoky-raised);
   }
-  .shot img { height: 100%; width: 100%; object-fit: cover; }
+  /* Real screenshots keep their own shape; only the empty frames use device shapes. */
+  .shot:not(.shot--empty) { aspect-ratio: auto; background: transparent; box-shadow: 0 0 0 1px var(--line); }
+  .shot img { height: 100%; width: auto; }
   .shot--phone { aspect-ratio: 9 / 20; }
   .shot--fold { aspect-ratio: 1 / 1.08; }
   .shot--tablet { aspect-ratio: 16 / 10; }
