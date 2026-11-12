@@ -275,6 +275,21 @@ const shots = await Promise.all(
   .notes { color: var(--muted); }
   .notes :global(ul) { margin: 0; padding-left: 1.25rem; }
   .notes :global(li + li) { margin-top: 0.4rem; }
+  .notes :global(p + p), .notes :global(ul + p), .notes :global(p + ul) { margin-top: 0.9rem; }
+  /* Images pasted into GitHub release notes carry fixed width/height attributes.
+     Let the height follow the width so they shrink without being squashed. */
+  .notes :global(img) {
+    display: inline-block;
+    vertical-align: top;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 28rem;
+    margin: 0.75rem 0.75rem 0 0;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .notes :global(a:has(img)) { display: inline-block; }
 
   @media (max-width: 52rem) {
     .intro { grid-template-columns: 1fr; }
