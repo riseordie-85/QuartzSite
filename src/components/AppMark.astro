@@ -1,0 +1,45 @@
+---
+// An app's icon. Uses the app's own icon if one is set,
+// otherwise draws the Quartz crystal with that app's facet lit.
+import { facets, toPoints, markViewBox } from '../lib/crystal';
+
+interface Props {
+  order: number;
+  icon?: string;
+  name: string;
+  size?: number;
+}
+const { order, icon, name, size = 48 } = Astro.props;
+---
+
+{
+  icon ? (
+    <img class="mark mark--img" src={icon} alt="" width={size} height={size} />
+  ) : (
+    <svg class="mark" viewBox={markViewBox} width={size} height={size} aria-hidden="true">
+      {facets.map((f) => (
+        <polygon
+          points={toPoints(f.points)}
+          class={f.n === order ? 'lit' : 'unlit'}
+        />
+      ))}
+    </svg>
+  )
+}
+
+<style>
+  .mark { flex: none; display: block; }
+  .mark--img { border-radius: 22%; }
+  polygon {
+    stroke-linejoin: round;
+    stroke-width: 9;
+  }
+  .unlit {
+    fill: rgb(236 232 244 / 0.06);
+    stroke: rgb(236 232 244 / 0.35);
+  }
+  .lit {
+    fill: var(--stone);
+    stroke: var(--stone);
+  }
+</style>

@@ -1,0 +1,86 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import AppMark from './AppMark.astro';
+import { statusLabel, platformText } from '../lib/labels';
+
+interface Props {
+  apps: CollectionEntry<'apps'>[];
+  compact?: boolean;
+}
+const { apps, compact = false } = Astro.props;
+---
+
+<ul class:list={['apps', { 'apps--compact': compact }]}>
+  {
+    apps.map((app) => (
+      <li data-stone={app.data.stone} data-facet={app.data.order}>
+        <a class="row" href={`/${app.id}/`}>
+          <AppMark order={app.data.order} icon={app.data.icon} name={app.data.name} size={compact ? 36 : 52} />
+          <span class="name">{app.data.name}</span>
+          {!compact && <span class="summary">{app.data.summary}</span>}
+          <span class="meta">
+            <span class="status" data-status={app.data.status}>
+              {statusLabel[app.data.status]}
+            </span>
+            {!compact && app.data.platforms.length > 0 && (
+              <span class="platforms">{platformText(app.data.platforms)}</span>
+            )}
+          </span>
+        </a>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .apps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+  li { border-bottom: 1px solid var(--line); }
+  .row {
+    display: grid;
+    grid-template-columns: auto 13rem 1fr auto;
+    align-items: center;
+    gap: 0.5rem 1.75rem;
+    padding: 1.35rem 0.75rem;
+    margin-inline: -0.75rem;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: background-color 160ms ease;
+  }
+  .row:hover,
+  .row:focus-visible { background: rgb(236 232 244 / 0.04); }
+  .name {
+    font-size: var(--step-1);
+    font-weight: 460;
+  }
+  .row:hover .name { color: var(--stone); }
+  .summary { color: var(--muted); }
+  .meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+  }
+  .platforms { font-size: var(--step--1); color: var(--muted); }
+
+  .apps--compact .row { grid-template-columns: auto 1fr auto; padding-block: 0.9rem; }
+
+  @media (max-width: 52rem) {
+    .row {
+      grid-template-columns: auto 1fr;
+      grid-template-areas: 'mark name' 'mark summary' 'mark meta';
+      align-items: start;
+      column-gap: 1.1rem;
+    }
+    .row > :global(.mark) { grid-area: mark; }
+    .name { grid-area: name; }
+    .summary { grid-area: summary; }
+    .meta { grid-area: meta; flex-direction: row; flex-wrap: wrap; gap: 0.25rem 1rem; align-items: center; }
+    .apps--compact .row { grid-template-columns: auto 1fr auto; grid-template-areas: none; align-items: center; }
+    .apps--compact .row > * { grid-area: auto; }
+  }
+</style>

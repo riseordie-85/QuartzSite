@@ -1,0 +1,263 @@
+---
+// One page per app, built from the Markdown files in src/content/apps/.
+import { getCollection, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import AppMark from '../components/AppMark.astro';
+import AppList from '../components/AppList.astro';
+import DownloadBox from '../components/DownloadBox.astro';
+import { getLatestRelease } from '../lib/github';
+import { statusLabel, platformText } from '../lib/labels';
+
+export async function getStaticPaths() {
+  const apps = await getCollection('apps');
+  return apps.map((app) => ({ params: { slug: app.id }, props: { app } }));
+}
+
+const { app } = Astro.props;
+const d = app.data;
+const { Content } = await render(app);
+const release = await getLatestRelease(d.repo, d.download);
+
+const others = (await getCollection('apps'))
+  .filter((a) => a.id !== app.id)
+  .sort((a, b) => a.data.order - b.data.order);
+
+const ready = d.features.filter((f) => !f.planned);
+const planned = d.features.filter((f) => f.planned);
+
+// Empty screenshot frames only show while you're working locally (npm run dev),
+// so the live site never shows placeholders.
+const showSlots = import.meta.env.DEV && d.screenshots.length === 0 && d.screenshotSlots.length > 0;
+const deviceName = { phone: 'Phone', fold: 'Unfolded phone', tablet: 'Tablet' };
+---
+
+<Base title={d.name} description={d.tagline} stone={d.stone}>
+  <section class="intro wrap">
+    <div class="intro__text">
+      <p class="crumb"><a href="/">Quartz</a> / {d.name.replace(/^Quartz\s*/, '') || d.name}</p>
+      <div class="title">
+        <AppMark order={d.order} icon={d.icon} name={d.name} size={64} />
+        <h1>{d.name}</h1>
+      </div>
+      <p class="tagline">{d.tagline}</p>
+      <p class="facts">
+        <span class="status" data-status={d.status}>{statusLabel[d.status]}</span>
+        {d.platforms.length > 0 && <span>{platformText(d.platforms)}</span>}
+      </p>
+      <div class="about"><Content /></div>
+    </div>
+    <DownloadBox
+      name={d.name}
+      status={d.status}
+      kind={d.download}
+      repo={d.repo}
+      minAndroid={d.minAndroid}
+      release={release}
+    />
+  </section>
+
+  {
+    (d.screenshots.length > 0 || showSlots) && (
+      <section class="shots" aria-label="Screenshots">
+        <div class="shots__track wrap">
+          {d.screenshots.map((s) => (
+            <figure class={`shot shot--${s.device}`}>
+              <img src={s.src} alt={s.alt} loading="lazy" />
+            </figure>
+          ))}
+          {showSlots &&
+            d.screenshotSlots.map((device) => (
+              <figure class={`shot shot--${device} shot--empty`}>
+                <figcaption>
+                  {deviceName[device]} screenshot
+                  <span>Add it under screenshots in {app.id}.md</span>
+                </figcaption>
+              </figure>
+            ))}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    d.features.length > 0 && (
+      <section class="section wrap" aria-labelledby="features-title">
+        <div class="section__head">
+          <h2 id="features-title">What it does</h2>
+        </div>
+        <div class="features">
+          {ready.map((f) => (
+            <div class="feature">
+              <h3>{f.title}</h3>
+              <p>{f.text}</p>
+            </div>
+          ))}
+        </div>
+        {planned.length > 0 && (
+          <>
+            <h3 class="planned-title">Coming later</h3>
+            <div class="features features--planned">
+              {planned.map((f) => (
+                <div class="feature">
+                  <h3>{f.title}</h3>
+                  <p>{f.text}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+    )
+  }
+
+  {
+    d.privacy.length > 0 && (
+      <section class="section wrap" aria-labelledby="privacy-title">
+        <div class="split">
+          <h2 id="privacy-title">Privacy</h2>
+          <ul class="privacy">
+            {d.privacy.map((line) => (
+              <li>{line}</li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    d.download !== 'none' && (
+      <section class="section wrap" aria-labelledby="install-title">
+        <div class="split">
+          <h2 id="install-title">How to install</h2>
+          <div>
+            {d.download === 'apk' ? (
+              <>
+                <ol class="steps">
+                  <li>Download the APK on your phone or tablet.</li>
+                  <li>Open the downloaded file. If Android asks, allow your browser or file app to install apps.</li>
+                  <li>Tap Install.</li>
+                </ol>
+                <p class="note">
+                  To update, install the new APK over the old one. Your data stays in place.
+                </p>
+              </>
+            ) : (
+              <p class="note">
+                Flashing steps are in the{' '}
+                {d.repo ? <a href={`https://github.com/${d.repo}#readme`}>{d.name} README on GitHub</a> : 'README'}.
+              </p>
+            )}
+            {d.repo && (
+              <p class="note">
+                The source code is on <a href={`https://github.com/${d.repo}`}>GitHub</a>.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    release && release.notesHtml && (
+      <section class="section wrap" aria-labelledby="changes-title">
+        <div class="split">
+          <h2 id="changes-title">What's new in {release.version}</h2>
+          <div class="notes" set:html={release.notesHtml} />
+        </div>
+      </section>
+    )
+  }
+
+  <section class="section wrap" aria-labelledby="more-title">
+    <div class="section__head">
+      <h2 id="more-title">More Quartz apps</h2>
+    </div>
+    <AppList apps={others} compact />
+  </section>
+</Base>
+
+<style>
+  .intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: start;
+    padding-block: clamp(1.5rem, 4vw, 3rem) clamp(3rem, 6vw, 4.5rem);
+  }
+  .crumb { color: var(--muted); font-size: var(--step--1); margin-bottom: 2rem; }
+  .crumb a { text-decoration: none; }
+  .crumb a:hover { color: var(--text); }
+  .title { display: flex; align-items: center; gap: 1.1rem; }
+  h1 { font-size: var(--step-4); font-weight: 320; letter-spacing: -0.025em; }
+  .tagline { margin-top: 1.25rem; font-size: var(--step-2); line-height: 1.3; color: var(--stone); max-width: 26ch; }
+  .facts { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1.25rem; color: var(--muted); font-size: var(--step--1); }
+  .about { margin-top: 2rem; max-width: 36rem; color: var(--muted); }
+  .about :global(p + p) { margin-top: 1em; }
+
+  /* Screenshots scroll sideways; each frame keeps its device's shape. */
+  .shots { padding-bottom: 0.5rem; }
+  .shots + .section { padding-top: clamp(2.5rem, 5vw, 3.5rem); }
+  .shots__track {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.75rem;
+  }
+  .shot {
+    flex: none;
+    margin: 0;
+    height: clamp(22rem, 48vw, 30rem);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    scroll-snap-align: start;
+    background: var(--smoky-raised);
+  }
+  .shot img { height: 100%; width: 100%; object-fit: cover; }
+  .shot--phone { aspect-ratio: 9 / 20; }
+  .shot--fold { aspect-ratio: 1 / 1.08; }
+  .shot--tablet { aspect-ratio: 16 / 10; }
+  .shot--empty {
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: 1.5px dashed var(--line-strong);
+    text-align: center;
+    padding: 1rem;
+  }
+  .shot--empty figcaption { color: var(--muted); font-size: var(--step--1); }
+  .shot--empty span { display: block; margin-top: 0.3rem; opacity: 0.7; }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: 2.25rem 3rem;
+  }
+  .feature { border-top: 2px solid var(--stone); padding-top: 1rem; }
+  .feature p { margin-top: 0.5rem; color: var(--muted); max-width: 38ch; }
+  .planned-title { margin: 3.5rem 0 1.5rem; color: var(--muted); font-weight: 400; }
+  .features--planned .feature { border-top: 2px dashed var(--line-strong); }
+  .features--planned h3 { font-weight: 420; }
+
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    gap: 1.5rem 3rem;
+  }
+  .privacy, .steps { margin: 0; padding-left: 1.25rem; }
+  .privacy li, .steps li { padding-left: 0.4rem; }
+  .privacy li + li, .steps li + li { margin-top: 0.6rem; }
+  .privacy li::marker { color: var(--stone); }
+  .steps li::marker { color: var(--stone); font-weight: 500; }
+  .note { margin-top: 1.1rem; color: var(--muted); }
+  .notes { color: var(--muted); }
+  .notes :global(ul) { margin: 0; padding-left: 1.25rem; }
+  .notes :global(li + li) { margin-top: 0.4rem; }
+
+  @media (max-width: 52rem) {
+    .intro { grid-template-columns: 1fr; }
+    .split { grid-template-columns: 1fr; }
+  }
+</style>

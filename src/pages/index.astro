@@ -1,0 +1,120 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Crystal from '../components/Crystal.astro';
+import AppList from '../components/AppList.astro';
+
+const apps = (await getCollection('apps')).sort((a, b) => a.data.order - b.data.order);
+const crystalApps = apps.map((a) => ({
+  order: a.data.order,
+  slug: a.id,
+  name: a.data.name,
+  stone: a.data.stone,
+}));
+---
+
+<Base>
+  <section class="hero wrap">
+    <div class="hero__text">
+      <h1>Android apps that keep to themselves.</h1>
+      <p class="lede">
+        Quartz is a small family of apps for phones, folding phones and tablets. There are no ads and no
+        tracking, and nothing leaves your device unless you send it.
+      </p>
+      <a class="button button--quiet" href="#apps">See the apps</a>
+    </div>
+    <div class="hero__art" id="crystal-wrap">
+      <Crystal apps={crystalApps} />
+    </div>
+  </section>
+
+  <section class="section wrap" id="apps" aria-labelledby="apps-title">
+    <div class="section__head">
+      <h2 id="apps-title">The apps</h2>
+      <p>Each one does one job and shares the same look, so they feel at home next to each other.</p>
+    </div>
+    <AppList apps={apps} />
+  </section>
+
+  <section class="section wrap" id="privacy" aria-labelledby="privacy-title">
+    <div class="section__head">
+      <h2 id="privacy-title">What every Quartz app promises</h2>
+    </div>
+    <dl class="promises">
+      <div>
+        <dt>No ads, no tracking</dt>
+        <dd>No ad networks, no analytics and no crash reporters phoning home. Nobody sees how you use the app.</dd>
+      </div>
+      <div>
+        <dt>Your data stays yours</dt>
+        <dd>Photos, notes and settings are stored on your device. If an app syncs, it syncs with a server you choose.</dd>
+      </div>
+      <div>
+        <dt>No accounts</dt>
+        <dd>There's no Quartz account to sign up for. Install the app and start using it.</dd>
+      </div>
+    </dl>
+  </section>
+</Base>
+
+<script>
+  // Light the matching crystal facet while an app row is hovered or focused.
+  const crystal = document.querySelector<SVGElement>('.crystal');
+  if (crystal) {
+    const set = (n?: string) =>
+      n ? crystal.setAttribute('data-active', n) : crystal.removeAttribute('data-active');
+    document.querySelectorAll<HTMLElement>('.apps li[data-facet]').forEach((li) => {
+      const n = li.dataset.facet;
+      li.addEventListener('mouseenter', () => set(n));
+      li.addEventListener('mouseleave', () => set());
+      li.addEventListener('focusin', () => set(n));
+      li.addEventListener('focusout', () => set());
+    });
+    crystal.querySelectorAll<SVGElement>('.facet').forEach((facet) => {
+      const n = facet.dataset.facet;
+      facet.addEventListener('mouseenter', () => set(n));
+      facet.addEventListener('mouseleave', () => set());
+    });
+  }
+</script>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 2rem;
+    padding-block: clamp(2rem, 6vw, 4.5rem) clamp(3rem, 7vw, 5rem);
+  }
+  h1 {
+    font-size: var(--step-5);
+    font-weight: 300;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    max-width: 11ch;
+  }
+  .lede {
+    margin-block: 1.75rem 2.25rem;
+    max-width: 34rem;
+    font-size: var(--step-1);
+    line-height: 1.55;
+    color: var(--muted);
+  }
+  .hero__art { margin-right: calc(-1 * var(--gutter)); }
+
+  .promises {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2rem;
+    margin: 0;
+  }
+  .promises div { border-top: 2px solid var(--line-strong); padding-top: 1.1rem; }
+  dt { font-size: var(--step-1); font-weight: 460; margin-bottom: 0.5rem; }
+  dd { margin: 0; color: var(--muted); max-width: 30ch; }
+
+  @media (max-width: 52rem) {
+    .hero { grid-template-columns: 1fr; }
+    .hero__art { order: -1; max-width: 26rem; margin: 0 auto; }
+    .promises { grid-template-columns: 1fr; }
+  }
+</style>

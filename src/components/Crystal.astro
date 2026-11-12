@@ -1,0 +1,130 @@
+---
+// The big crystal on the home page. Each facet links to its app.
+// Hovering or focusing an app in the list lights its facet and ray.
+import { facets, toPoints, exitPoint, rayEnds, viewBox } from '../lib/crystal';
+
+interface Props {
+  apps: { order: number; slug: string; name: string; stone: string }[];
+}
+const { apps } = Astro.props;
+const byOrder = new Map(apps.map((a) => [a.order, a]));
+---
+
+<svg class="crystal" viewBox={viewBox} role="group" aria-label="The Quartz apps">
+  <defs>
+    {facets.map((f) => {
+      const app = byOrder.get(f.n);
+      return (
+        <linearGradient id={`facet-${f.n}`} x1="0" y1="0" x2="0.35" y2="1">
+          <stop offset="0" stop-color={`var(--${app?.stone ?? 'clear'})`} stop-opacity="1" />
+          <stop offset="1" stop-color={`var(--${app?.stone ?? 'clear'})`} stop-opacity="0.5" />
+        </linearGradient>
+      );
+    })}
+  </defs>
+
+  <!-- White light coming in from the left -->
+  <line class="beam" x1="0" y1="110" x2="168" y2="268" />
+
+  <!-- Light split into one ray per app -->
+  <g class="rays">
+    {rayEnds.map(([x, y], i) => {
+      const app = byOrder.get(i + 1);
+      return (
+        <line
+          class="ray"
+          data-facet={i + 1}
+          x1={exitPoint[0]}
+          y1={exitPoint[1]}
+          x2={x}
+          y2={y}
+          stroke={`var(--${app?.stone ?? 'clear'})`}
+          style={`--i:${i}`}
+        />
+      );
+    })}
+  </g>
+
+  <g class="facets">
+    {facets.map((f) => {
+      const app = byOrder.get(f.n);
+      const shape = (
+        <polygon
+          class="facet"
+          data-facet={f.n}
+          points={toPoints(f.points)}
+          fill={`url(#facet-${f.n})`}
+          style={`--rest:${f.rest}`}
+        />
+      );
+      return app ? (
+        <a href={`/${app.slug}/`} aria-label={app.name}>
+          {shape}
+        </a>
+      ) : (
+        shape
+      );
+    })}
+  </g>
+</svg>
+
+<style>
+  .crystal {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .facet {
+    opacity: var(--rest);
+    stroke: rgb(236 232 244 / 0.55);
+    stroke-width: 1.25;
+    stroke-linejoin: round;
+    transition: opacity 220ms ease;
+  }
+  .beam {
+    stroke: var(--text);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    opacity: 0.85;
+  }
+  .ray {
+    stroke-width: 3;
+    stroke-linecap: round;
+    opacity: 0.8;
+    transition: opacity 220ms ease, stroke-width 220ms ease;
+    stroke-dasharray: 320;
+    stroke-dashoffset: 320;
+    animation: ray-in 900ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+    animation-delay: calc(350ms + var(--i) * 90ms);
+  }
+  @keyframes ray-in {
+    to { stroke-dashoffset: 0; }
+  }
+
+  a:focus { outline: none; }
+  a:focus-visible .facet { stroke: var(--text); stroke-width: 3; }
+
+  /* Light one facet and its ray, dim the rest. Set by the app list or by hovering a facet. */
+  .crystal[data-active] .facet { opacity: calc(var(--rest) * 0.45); }
+  .crystal[data-active] .ray { opacity: 0.18; }
+  .crystal[data-active='1'] [data-facet='1'],
+  .crystal[data-active='2'] [data-facet='2'],
+  .crystal[data-active='3'] [data-facet='3'],
+  .crystal[data-active='4'] [data-facet='4'],
+  .crystal[data-active='5'] [data-facet='5'],
+  .crystal[data-active='6'] [data-facet='6'] {
+    opacity: 1;
+  }
+  .crystal[data-active='1'] .ray[data-facet='1'],
+  .crystal[data-active='2'] .ray[data-facet='2'],
+  .crystal[data-active='3'] .ray[data-facet='3'],
+  .crystal[data-active='4'] .ray[data-facet='4'],
+  .crystal[data-active='5'] .ray[data-facet='5'],
+  .crystal[data-active='6'] .ray[data-facet='6'] {
+    stroke-width: 5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ray { animation: none; stroke-dashoffset: 0; }
+  }
+</style>

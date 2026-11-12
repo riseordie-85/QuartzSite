@@ -1,0 +1,51 @@
+# Builds the site and uploads it to GoDaddy over FTP.
+# Runs when you push to main, once a day (to pick up new app releases),
+# and whenever you press "Run workflow" on the Actions tab.
+#
+# Needs these repository secrets (Settings > Secrets and variables > Actions):
+#   FTP_SERVER    e.g. ftp.riseordie.net
+#   FTP_USERNAME  the cPanel FTP account for the subdomain
+#   FTP_PASSWORD
+#   FTP_DIR       folder on the server, ending in a slash, e.g. /public_html/quartz/
+#                 (if the FTP account already starts in the subdomain folder, use ./)
+# Optional:
+#   RELEASES_TOKEN  a GitHub token that can read your app repos (needed if any are private)
+
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [app-released]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Upload to GoDaddy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./dist/
+          server-dir: ${{ secrets.FTP_DIR }}

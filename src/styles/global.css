@@ -1,0 +1,156 @@
+@import '@fontsource-variable/jost';
+
+/* Quartz tokens. Each app takes one stone color. */
+:root {
+  --smoky: #1e1a2e;
+  --smoky-raised: #27223a;
+  --smoky-deep: #17142a;
+  --text: #ece8f4;
+  --muted: #ada6c2;
+  --line: rgb(236 232 244 / 0.12);
+  --line-strong: rgb(236 232 244 / 0.24);
+
+  --rose: #f4a7b9;
+  --citrine: #f2c66d;
+  --blue: #7fd1e6;
+  --amethyst: #b39cf0;
+  --aventurine: #8ed1a8;
+  --clear: #e6e2d8;
+
+  --stone: var(--amethyst);
+
+  --font: 'Jost Variable', 'Jost', system-ui, sans-serif;
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5625rem;
+  --step-3: 2rem;
+  --step-4: clamp(2.25rem, 4.5vw, 3rem);
+  --step-5: clamp(2.75rem, 6.5vw, 4.75rem);
+
+  --wrap: 72rem;
+  --gutter: clamp(1.25rem, 4vw, 2.5rem);
+  --radius-sm: 6px;
+  --radius-lg: 18px;
+
+  color-scheme: dark;
+}
+
+[data-stone='rose'] { --stone: var(--rose); }
+[data-stone='citrine'] { --stone: var(--citrine); }
+[data-stone='blue'] { --stone: var(--blue); }
+[data-stone='amethyst'] { --stone: var(--amethyst); }
+[data-stone='aventurine'] { --stone: var(--aventurine); }
+[data-stone='clear'] { --stone: var(--clear); }
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--smoky);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--step-0);
+  font-weight: 380;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  margin: 0;
+  font-weight: 340;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h2 { font-size: var(--step-3); }
+h3 { font-size: var(--step-1); font-weight: 480; letter-spacing: 0; }
+p { margin: 0; text-wrap: pretty; }
+
+a { color: inherit; text-decoration-color: var(--line-strong); text-underline-offset: 0.2em; }
+a:hover { text-decoration-color: currentColor; }
+
+:focus-visible {
+  outline: 2px solid var(--stone);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+img { max-width: 100%; display: block; }
+
+.wrap {
+  width: min(100% - 2 * var(--gutter), var(--wrap));
+  margin-inline: auto;
+}
+
+.muted { color: var(--muted); }
+
+.skip {
+  position: absolute;
+  left: -999px;
+  top: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--text);
+  color: var(--smoky);
+  border-radius: var(--radius-sm);
+  z-index: 10;
+}
+.skip:focus { left: 0.5rem; }
+
+/* Buttons */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1.35rem;
+  border-radius: 999px;
+  background: var(--stone);
+  color: var(--smoky-deep);
+  font-weight: 520;
+  text-decoration: none;
+  transition: filter 160ms ease;
+}
+.button:hover { filter: brightness(1.08); }
+.button--quiet {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* Status: the outline style tells you how far along an app is. */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--step--1);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.status::before {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--stone);
+}
+.status[data-status='beta']::before { background: transparent; box-shadow: inset 0 0 0 2px var(--stone); background-image: linear-gradient(90deg, var(--stone) 50%, transparent 50%); }
+.status[data-status='in-development']::before { background: transparent; box-shadow: inset 0 0 0 2px var(--stone); }
+.status[data-status='planned']::before { background: transparent; border: 1.5px dashed var(--muted); }
+.status[data-status='released'] { color: var(--text); }
+
+.section { padding-block: clamp(3.5rem, 8vw, 6rem); }
+.section + .section { border-top: 1px solid var(--line); }
+.section__head { max-width: 40rem; margin-bottom: 2.25rem; }
+.section__head p { margin-top: 0.75rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

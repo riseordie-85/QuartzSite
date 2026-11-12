@@ -1,0 +1,20 @@
+{
+  "name": "quartz-site",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "dev:mock": "cross-env MOCK_RELEASES=1 astro dev"
+  },
+  "dependencies": {
+    "@fontsource-variable/jost": "^5.2.8",
+    "astro": "^7.4.11",
+    "marked": "^17.0.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
