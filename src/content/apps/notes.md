@@ -42,6 +42,9 @@ screenshots:
   - src: /screenshots/notes/quick-note-unfolded.webp
     alt: Shelves and quick notes on the left with a quick note checklist open on the right
     device: fold
+  - src: /screenshots/notes/notebook-tablet.webp
+    alt: A notebook open on a tablet as two pages, with the full editing toolbar along the top
+    device: tablet
 ---
 
 Quartz Notes is for both kinds of writing: the thought you need to get down in five seconds, and the notebook you keep adding to for months. Quick notes stay quick. Notebooks get shelves, page styles and room to spread out on a bigger screen.
