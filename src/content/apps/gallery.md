@@ -45,7 +45,7 @@ screenshots:
     alt: The photo grid on one half of an unfolded phone, with the selected photo and its details on the other
     device: fold
   - src: /screenshots/gallery/grid-phone.webp
-    alt: The photo grid on a phone, scrolling under the frosted glass title bar, with Photos and Albums tabs at the bottom
+    alt: The photo grid on a phone, grouped under November 2026, with the frosted glass title bar and Photos and Albums tabs
     device: phone
   - src: /screenshots/gallery/markup-text.webp
     alt: Markup adding a speech bubble that says Wish you were here and a laughing emoji to a mountain photo
