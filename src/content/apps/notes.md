@@ -23,10 +23,8 @@ features:
     text: Export by hand whenever you like, or let Notes export automatically to a folder you choose.
   - title: Freeform pages
     text: Fixed-size pages for shapes, arrows, connected nodes, images, voice notes and brush work, in sizes from cover screen to A3.
-    planned: true
   - title: Templates
     text: Save any page or quick note as a template, keeping its headers and text.
-    planned: true
   - title: Home screen widgets
     text: A shelf of notebooks, a single notebook, your quick notes, or a toolbar for starting something new.
     planned: true
