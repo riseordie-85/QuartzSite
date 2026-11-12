@@ -66,7 +66,7 @@ If a repo is **private**, visitors can't download its release files. Either make
 
 ## Deploying to GoDaddy
 
-1. In cPanel, create the subdomain `quartz.riseordie.net` and note its folder. Create an FTP account for that folder too.
+1. In cPanel, create the subdomain `quartz.timcordova.com` and note its folder. Create an FTP account for that folder too.
 2. The site lives at `riseordie-85/QuartzSite`. Clone it, make changes, and push.
 3. In the repo, go to **Settings → Secrets and variables → Actions** and add `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` and `FTP_DIR`. The workflow file explains each one.
 4. Push to `main`. The **Actions** tab shows the build, then the upload.

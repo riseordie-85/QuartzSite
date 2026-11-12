@@ -3,7 +3,7 @@
 # and whenever you press "Run workflow" on the Actions tab.
 #
 # Needs these repository secrets (Settings > Secrets and variables > Actions):
-#   FTP_SERVER    e.g. ftp.riseordie.net
+#   FTP_SERVER    e.g. ftp.timcordova.com
 #   FTP_USERNAME  the cPanel FTP account for the subdomain
 #   FTP_PASSWORD
 #   FTP_DIR       folder on the server, ending in a slash, e.g. /public_html/quartz/
