@@ -40,7 +40,19 @@ privacy:
   - The app has no internet access. It's removed from the build entirely.
   - No ads, no accounts, no analytics and no tracking.
   - Your photos, edits and map stay on your device. Background removal's model and Google Fonts are downloaded by Google Play services, not by the gallery.
-screenshotSlots: [phone, fold, tablet]
+screenshots:
+  - src: /screenshots/gallery/grid-unfolded.webp
+    alt: The photo grid on one half of an unfolded phone, with the selected photo and its details on the other
+    device: fold
+  - src: /screenshots/gallery/grid-phone.webp
+    alt: The photo grid on a phone, scrolling under the frosted glass title bar, with Photos and Albums tabs at the bottom
+    device: phone
+  - src: /screenshots/gallery/markup-text.webp
+    alt: Markup adding a speech bubble that says Wish you were here and a laughing emoji to a mountain photo
+    device: phone
+  - src: /screenshots/gallery/markup-sticker.webp
+    alt: An astronaut cutout placed as a sticker on a mountain lake photo, with opacity, stretch and position controls
+    device: phone
 ---
 
 A replacement for the gallery that came with your phone, for the photos and videos already on it. Everything happens on the device, from editing and search to the map and the duplicate finder. Nothing is uploaded, because the app can't go online.
