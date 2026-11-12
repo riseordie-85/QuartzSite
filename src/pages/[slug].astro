@@ -7,6 +7,8 @@ import AppList from '../components/AppList.astro';
 import DownloadBox from '../components/DownloadBox.astro';
 import { getLatestRelease } from '../lib/github';
 import { statusLabel, platformText } from '../lib/labels';
+import sharp from 'sharp';
+import path from 'node:path';
 
 export async function getStaticPaths() {
   const apps = await getCollection('apps');
@@ -29,6 +31,19 @@ const planned = d.features.filter((f) => f.planned);
 // so the live site never shows placeholders.
 const showSlots = import.meta.env.DEV && d.screenshots.length === 0 && d.screenshotSlots.length > 0;
 const deviceName = { phone: 'Phone', fold: 'Unfolded phone', tablet: 'Tablet' };
+
+// Read each screenshot's real size so the page can draw it in its true proportions.
+const shots = await Promise.all(
+  d.screenshots.map(async (s) => {
+    const file = path.join(process.cwd(), 'public', s.src);
+    try {
+      const { width, height } = await sharp(file).metadata();
+      return { ...s, width: width!, height: height! };
+    } catch {
+      throw new Error(`Screenshot not found for ${app.id}.md: ${s.src} (looked in public${s.src})`);
+    }
+  }),
+);
 ---
 
 <Base title={d.name} description={d.tagline} stone={d.stone}>
@@ -60,9 +75,9 @@ const deviceName = { phone: 'Phone', fold: 'Unfolded phone', tablet: 'Tablet' };
     (d.screenshots.length > 0 || showSlots) && (
       <section class="shots" aria-label="Screenshots">
         <div class="shots__track wrap">
-          {d.screenshots.map((s) => (
-            <figure class={`shot shot--${s.device}`}>
-              <img src={s.src} alt={s.alt} loading="lazy" />
+          {shots.map((s) => (
+            <figure class="shot" style={`--ar:${(s.width / s.height).toFixed(4)}`}>
+              <img src={s.src} alt={s.alt} width={s.width} height={s.height} loading="lazy" decoding="async" />
             </figure>
           ))}
           {showSlots &&
@@ -196,35 +211,37 @@ const deviceName = { phone: 'Phone', fold: 'Unfolded phone', tablet: 'Tablet' };
   .about { margin-top: 2rem; max-width: 36rem; color: var(--muted); }
   .about :global(p + p) { margin-top: 1em; }
 
-  /* Screenshots scroll sideways; each frame keeps its device's shape. */
-  .shots { padding-bottom: 0.5rem; }
+  /* Screenshots scroll sideways. Each one is sized from its own width and height
+     (--ar), so it can't be stretched or squashed. Wide ones narrow to fit small screens. */
+  .shots { padding-bottom: 0.5rem; --shot-h: clamp(22rem, 48vw, 30rem); }
   .shots + .section { padding-top: clamp(2.5rem, 5vw, 3.5rem); }
   .shots__track {
     display: flex;
+    align-items: center;
     gap: 1.25rem;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    padding-bottom: 0.75rem;
+    padding: 2px 2px 0.75rem;
   }
   .shot {
     flex: none;
     margin: 0;
-    height: clamp(22rem, 48vw, 30rem);
+    width: min(calc(var(--shot-h) * var(--ar)), 86vw);
+    aspect-ratio: var(--ar);
     border-radius: var(--radius-lg);
     overflow: hidden;
     scroll-snap-align: start;
-    background: var(--smoky-raised);
+    box-shadow: 0 0 0 1px var(--line);
   }
-  /* Real screenshots keep their own shape; only the empty frames use device shapes. */
-  .shot:not(.shot--empty) { aspect-ratio: auto; background: transparent; box-shadow: 0 0 0 1px var(--line); }
-  .shot img { height: 100%; width: auto; }
-  .shot--phone { aspect-ratio: 9 / 20; }
-  .shot--fold { aspect-ratio: 1 / 1.08; }
-  .shot--tablet { aspect-ratio: 16 / 10; }
+  .shot img { width: 100%; height: 100%; max-width: none; }
+  /* Placeholder frames (dev only) use device shapes. */
+  .shot--phone { --ar: 0.45; }
+  .shot--fold { --ar: 0.93; }
+  .shot--tablet { --ar: 1.6; }
   .shot--empty {
     display: grid;
     place-items: center;
-    background: transparent;
+    box-shadow: none;
     border: 1.5px dashed var(--line-strong);
     text-align: center;
     padding: 1rem;
