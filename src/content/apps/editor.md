@@ -28,7 +28,25 @@ privacy:
   - The app has no internet access. It's removed from the build entirely.
   - Every AI feature runs on the device. Your pictures never leave it.
   - No ads, no accounts and no tracking.
-screenshotSlots: [tablet, fold, phone]
+screenshots:
+  - src: /screenshots/editor/video-overlay-tablet.webp
+    alt: A stream overlay open on a tablet with the menu bar, tool column and stacked Color, Properties, Brushes, History and Layers panels
+    device: tablet
+  - src: /screenshots/editor/banner-unfolded.webp
+    alt: A gaming banner on an unfolded phone, with the brush options bar and a Layers panel showing linked smart layers, text with effects and folders
+    device: fold
+  - src: /screenshots/editor/floating-layers-tablet.webp
+    alt: An offline screen design on a tablet with the Layers panel floating over the canvas and the other panels docked as icons
+    device: tablet
+  - src: /screenshots/editor/rotated-canvas-unfolded.webp
+    alt: The canvas rotated 14 degrees in the touch layout, with the brush sliders and a compact layer strip
+    device: fold
+  - src: /screenshots/editor/offline-phone.webp
+    alt: The touch layout on a phone, zoomed in on the design, with the tool column and layer strip
+    device: phone
+  - src: /screenshots/editor/export-tablet.webp
+    alt: The export panel with PNG, JPG, WebP, TIFF, Photoshop and layered TIFF formats, size presets and an estimated file size
+    device: tablet
 ---
 
 A Photoshop-style editor built for photobashing, cutouts and banner work. It's made first for tablets with a pen and keyboard, and it adapts down to an unfolded phone or a regular phone. Layered Photoshop files open with their structure intact, so you can pick up work started on a computer.
