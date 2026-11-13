@@ -2,7 +2,7 @@
 name: Quartz Editor
 tagline: Layers, masks and Photoshop files on your tablet.
 summary: A layer-based photo editor that opens Photoshop files and works with pen, touch and keyboard.
-status: in-development
+status: released
 stone: citrine
 order: 2
 platforms: [tablet, fold, phone]
