@@ -1,0 +1,222 @@
+---
+// The Extras gallery: wallpapers, overlays and fonts for QuartzInk. The list
+// isn't part of the build: the upload page (/extras/admin/) keeps
+// /extras/catalog.json on the server, and this page reads it in the browser,
+// so new items show up without a deploy. QuartzInk's web dashboard reads the
+// same catalog to install them.
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Extras" description="Wallpapers, overlays and fonts for QuartzInk e-readers." stone="clear">
+  <section class="wrap extras">
+    <div class="extras__head">
+      <h1>Extras</h1>
+      <p class="lede">
+        Wallpapers, overlays and fonts for <a href="/quartzink/">QuartzInk</a>. Download them here, or install them
+        straight onto your reader from its web dashboard: open <strong>Extras</strong>{' '}at{' '}
+        <code>http://quartzink.local</code> while the reader is on your home Wi-Fi.
+      </p>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Kinds of extras">
+      <button role="tab" aria-selected="true" data-kind="wallpaper">Wallpapers</button>
+      <button role="tab" aria-selected="false" data-kind="overlay">Overlays</button>
+      <button role="tab" aria-selected="false" data-kind="font">Fonts</button>
+    </div>
+    <p class="hint" id="hint"></p>
+
+    <div class="grid" id="grid" aria-live="polite"></div>
+    <p class="muted empty" id="empty" hidden></p>
+  </section>
+</Base>
+
+<script>
+  type ExtraFile = { name: string; url: string; size: number; format: string };
+  type Extra = {
+    id: string;
+    type: 'wallpaper' | 'overlay' | 'font';
+    name: string;
+    credit?: string;
+    creditUrl?: string;
+    license?: string;
+    preview?: string | null;
+    width?: number;
+    height?: number;
+    family?: string;
+    files: ExtraFile[];
+  };
+
+  const HINTS: Record<string, string> = {
+    wallpaper: 'Shown full screen by the Custom sleep screens. Your reader resizes them to fit its screen.',
+    overlay: 'Transparent PNGs drawn over the page or the book cover by the Page Overlay and Cover + Overlay sleep screens.',
+    font: 'Reading fonts. TTF files install on the X4 Pro and Picco; the X3 uses the .cpfont files.',
+  };
+  const EMPTY: Record<string, string> = {
+    wallpaper: 'No wallpapers yet.',
+    overlay: 'No overlays yet.',
+    font: 'No fonts yet.',
+  };
+  const catalogUrl = new URL('/extras/catalog.json', location.href);
+  let items: Extra[] = [];
+  let kind = 'wallpaper';
+
+  function el(tag: string, cls?: string, text?: string) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function sizeText(bytes: number) {
+    return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+  }
+
+  function card(item: Extra) {
+    const article = el('article', 'card card--' + item.type);
+    const frame = el('div', 'card__frame');
+    if (item.preview) {
+      const img = el('img') as HTMLImageElement;
+      img.src = new URL(item.preview, catalogUrl).href;
+      img.alt = item.name;
+      img.loading = 'lazy';
+      frame.appendChild(img);
+    } else {
+      frame.appendChild(el('span', 'card__none', item.type === 'font' ? item.family || item.name : 'No preview'));
+    }
+    article.appendChild(frame);
+
+    const body = el('div', 'card__body');
+    body.appendChild(el('h3', '', item.name));
+    if (item.credit) {
+      const credit = el('p', 'card__credit');
+      credit.append('By ');
+      if (item.creditUrl) {
+        const a = el('a', '', item.credit) as HTMLAnchorElement;
+        a.href = item.creditUrl;
+        a.rel = 'noopener';
+        credit.appendChild(a);
+      } else {
+        credit.append(item.credit);
+      }
+      body.appendChild(credit);
+    }
+    const meta: string[] = [];
+    if (item.license) meta.push(item.license);
+    if (item.width && item.height) meta.push(item.width + ' × ' + item.height);
+    if (meta.length) body.appendChild(el('p', 'card__meta', meta.join(' · ')));
+
+    const files = el('ul', 'card__files');
+    for (const file of item.files) {
+      const li = el('li');
+      const a = el('a', '', file.name) as HTMLAnchorElement;
+      a.href = new URL(file.url, catalogUrl).href;
+      a.download = file.name;
+      li.append(a, el('span', 'muted', ' ' + sizeText(file.size)));
+      files.appendChild(li);
+    }
+    body.appendChild(files);
+    article.appendChild(body);
+    return article;
+  }
+
+  function render() {
+    const shown = items.filter((item) => item.type === kind);
+    const grid = document.getElementById('grid')!;
+    grid.className = 'grid grid--' + kind;
+    grid.replaceChildren(...shown.map(card));
+    const empty = document.getElementById('empty')!;
+    empty.hidden = shown.length > 0;
+    empty.textContent = EMPTY[kind];
+    document.getElementById('hint')!.textContent = HINTS[kind];
+    for (const tab of document.querySelectorAll<HTMLButtonElement>('.tabs button')) {
+      tab.setAttribute('aria-selected', String(tab.dataset.kind === kind));
+    }
+  }
+
+  for (const tab of document.querySelectorAll<HTMLButtonElement>('.tabs button')) {
+    tab.addEventListener('click', () => {
+      kind = tab.dataset.kind!;
+      render();
+    });
+  }
+
+  async function load() {
+    try {
+      const response = await fetch(catalogUrl, { cache: 'no-cache' });
+      if (response.status === 404) {
+        items = [];
+      } else if (!response.ok) {
+        throw new Error(response.status + ' ' + response.statusText);
+      } else {
+        items = (await response.json()).items || [];
+      }
+      render();
+    } catch (error) {
+      const empty = document.getElementById('empty')!;
+      empty.hidden = false;
+      empty.textContent = 'The gallery could not load (' + (error as Error).message + '). Try again in a moment.';
+    }
+  }
+  render();
+  load();
+</script>
+
+<style is:global>
+  /* Global so the cards built in the browser get them; everything sits under .extras. */
+  .extras { padding-block: clamp(2rem, 6vw, 4rem) clamp(3.5rem, 8vw, 6rem); }
+  .extras__head { max-width: 44rem; margin-bottom: 2rem; }
+  .extras h1 { font-size: var(--step-5); }
+  .extras .lede { margin-top: 1rem; color: var(--muted); font-size: var(--step-1); }
+  .extras .lede strong, .extras .lede code { color: var(--text); }
+  .extras code { font-size: 0.9em; }
+
+  .extras .tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .extras .tabs button {
+    font: inherit;
+    font-weight: 480;
+    padding: 0.5rem 1.15rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .extras .tabs button[aria-selected='true'] { background: var(--stone); color: var(--smoky-deep); }
+  .extras .hint { margin: 1rem 0 1.75rem; color: var(--muted); }
+
+  .extras .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+  .extras .grid--font { grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); }
+  .extras .empty { padding: 2rem 0; }
+
+  .extras .card {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-lg);
+    background: var(--smoky-raised);
+    box-shadow: inset 0 0 0 1px var(--line);
+    overflow: hidden;
+  }
+  .extras .card__frame {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 3 / 5;
+    background: #fff;
+  }
+  .extras .card--font .card__frame { aspect-ratio: 12 / 5; }
+  .extras .card__frame img { width: 100%; height: 100%; object-fit: contain; }
+  /* Overlays are transparent: a checkerboard shows where the page shows through. */
+  .extras .card--overlay .card__frame {
+    background: repeating-conic-gradient(#e9e6ef 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+  }
+  .extras .card__none { color: #444; font-size: var(--step-1); padding: 1rem; text-align: center; }
+  .extras .card__body { padding: 1rem 1.15rem 1.15rem; display: grid; gap: 0.3rem; }
+  .extras .card__credit, .extras .card__meta { color: var(--muted); font-size: var(--step--1); }
+  .extras .card__files { list-style: none; margin: 0.4rem 0 0; padding: 0; font-size: var(--step--1); display: grid; gap: 0.15rem; }
+  .extras .card__files a { overflow-wrap: anywhere; }
+</style>

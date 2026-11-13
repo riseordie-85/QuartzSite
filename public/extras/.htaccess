@@ -1,0 +1,17 @@
+# QuartzInk dashboards (served from the e-reader at http://quartzink.local)
+# read the catalog and download items from here, so allow any page to read them.
+Options -Indexes
+<IfModule mod_headers.c>
+  <FilesMatch "\.(json|jpe?g|png|webp|bmp|ttf|otf|cpfont)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+  <Files "catalog.json">
+    Header set Cache-Control "no-cache"
+  </Files>
+</IfModule>
+AddType font/ttf .ttf
+AddType font/otf .otf
+AddType application/octet-stream .cpfont
+<FilesMatch "^catalog\.json\.(lock|tmp)$">
+  Require all denied
+</FilesMatch>

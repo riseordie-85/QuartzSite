@@ -1,0 +1,6 @@
+Options -Indexes
+DirectoryIndex index.php
+# Only index.php is a page; the password hash and login counter are not.
+<FilesMatch "^(config\.php|\.login-throttle\.json|\.user\.ini)$">
+  Require all denied
+</FilesMatch>

@@ -3,3 +3,6 @@ dist/
 .astro/
 .env
 .DS_Store
+
+# Extras admin password hash: written by the deploy from a secret, never committed
+public/extras/admin/config.php

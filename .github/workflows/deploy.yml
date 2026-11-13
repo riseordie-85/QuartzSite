@@ -10,6 +10,8 @@
 #                 (if the FTP account already starts in the subdomain folder, use ./)
 # Optional:
 #   RELEASES_TOKEN  a GitHub token that can read your app repos (needed if any are private)
+#   EXTRAS_ADMIN_PASSWORD  the password for /extras/admin/ (the upload page for
+#                 QuartzInk wallpapers, overlays and fonts). Only its hash goes to the server.
 
 name: Build and deploy
 
@@ -39,6 +41,17 @@ jobs:
         run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Extras admin password
+        env:
+          EXTRAS_ADMIN_PASSWORD: ${{ secrets.EXTRAS_ADMIN_PASSWORD }}
+        run: |
+          if [ -n "$EXTRAS_ADMIN_PASSWORD" ]; then
+            php -r 'echo "<?php return [\"hash\" => ", var_export(password_hash(getenv("EXTRAS_ADMIN_PASSWORD"), PASSWORD_DEFAULT), true), "];\n";' > dist/extras/admin/config.php
+            echo "Wrote the Extras admin password hash."
+          else
+            echo "No EXTRAS_ADMIN_PASSWORD secret; the Extras admin page stays locked."
+          fi
 
       - name: Upload to GoDaddy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

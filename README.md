@@ -1,6 +1,6 @@
 # Quartz site
 
-The homepage for the Quartz apps. It's built with [Astro](https://astro.build), which turns Markdown files and templates into a plain HTML site. There's no PHP and no database, so there's nothing on the server to update or patch.
+The homepage for the Quartz apps. It's built with [Astro](https://astro.build), which turns Markdown files and templates into a plain HTML site. The pages are plain HTML. The one exception is the Extras upload page (see below), a single PHP file with no database.
 
 ## Astro in five minutes
 
@@ -97,3 +97,24 @@ jobs:
             https://api.github.com/repos/riseordie-85/QuartzSite/dispatches \
             -d '{"event_type":"app-released"}'
 ```
+
+## Extras: wallpapers, overlays and fonts for QuartzInk
+
+`/extras/` is a gallery of wallpapers, overlays and fonts for QuartzInk e-readers. The reader's own web dashboard
+(**Extras** at `http://quartzink.local`) reads the same list and installs items onto the device.
+
+You add things at **`/extras/admin/`**, a password-protected upload page. Pick the type, give it a name and a credit,
+choose the file (or, for a font, all of its style files plus any `.cpfont` packs for the X3) and press Add. It shows up
+in the gallery and on every reader straight away; there's no deploy.
+
+- **Password:** add a repository secret named `EXTRAS_ADMIN_PASSWORD` (Settings > Secrets and variables > Actions),
+  then run the deploy. Only a hash of it is sent to the server. To change it, update the secret and deploy again.
+- **Where things live:** uploads go to `/extras/files/` and the list to `/extras/catalog.json` on the server. They are
+  not in this repo, and the deploy never touches them, so download a copy of that folder now and then as a backup.
+- **Previews** are made on upload: a small JPEG for wallpapers, a PNG for overlays and a sample image for fonts.
+- **Sizes:** the upload page accepts up to 24 MB per file (`public/extras/admin/.user.ini`).
+- **Overlays** made at 480 × 800 fit the X4, X4 Pro and Picco and stretch to the X3.
+
+The gallery page (`src/pages/extras.astro`) and the readers load `catalog.json` in the browser.
+`public/extras/.htaccess` lets readers' dashboards fetch it from another address.
+
