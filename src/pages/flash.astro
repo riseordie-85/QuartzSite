@@ -61,6 +61,14 @@ import Base from '../layouts/Base.astro';
           <pre id="log"></pre>
         </details>
         <details class="own">
+          <summary>Reader stuck on a frozen screen?</summary>
+          <p class="muted">
+            If an install finished but the reader never restarted, plug it in and restart it from here. Nothing is
+            installed.
+          </p>
+          <button type="button" class="secondary" id="restart">Restart the reader</button>
+        </details>
+        <details class="own">
           <summary>Install a .bin file of your own instead</summary>
           <p class="muted">A QuartzInk or CrossPoint firmware.bin for the reader picked above. The same checks apply.</p>
           <input type="file" id="ownFile" accept=".bin" />
@@ -125,6 +133,7 @@ import Base from '../layouts/Base.astro';
     const ownFile = ($('ownFile') as HTMLInputElement).files?.[0];
     const file = device && build ? build.files[device] : null;
     ($('install') as HTMLButtonElement).disabled = busy || !device || (!file && !ownFile) || !('serial' in navigator);
+    ($('restart') as HTMLButtonElement).disabled = busy || !('serial' in navigator);
     if (!build) return;
     const date = build.published ? new Date(build.published).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     let text = 'Latest build: ' + build.commit + (date ? ' · ' + date : '');
@@ -146,6 +155,55 @@ import Base from '../layouts/Base.astro';
       $('build').textContent = 'Could not find the latest build (' + (error as Error).message + '). You can still install a .bin file of your own below.';
     }
     renderChoices();
+  }
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Restarts the chip into its firmware. esptool-js 0.7.1's after('hard_reset')
+  // only releases the reset line without ever pulling it, which leaves the
+  // reader in its flashing mode with a frozen screen. This is esptool's own
+  // sequence: boot pin high (DTR off), hold reset (RTS on), release. The reader
+  // drops off USB as it resets, so a failure releasing the line is expected.
+  async function restartChip(transport: Transport) {
+    await transport.setDTR(false);
+    await transport.setRTS(true);
+    await sleep(200);
+    try {
+      await transport.setRTS(false);
+      await sleep(200);
+    } catch {
+      // The port went away with the reset.
+    }
+  }
+
+  // Restarts a reader without installing anything, for one left in flashing mode.
+  async function restartOnly() {
+    if (busy) return;
+    busy = true;
+    renderChoices();
+    let transport: Transport | null = null;
+    try {
+      const port = await (navigator as any).serial.requestPort();
+      transport = new Transport(port, false);
+      await transport.connect(115200);
+      status('Restarting the reader…');
+      await restartChip(transport);
+      status('Restarted. The reader should show its boot screen in a few seconds.');
+    } catch (error) {
+      if ((error as DOMException).name === 'NotFoundError') {
+        status('No port chosen. Press Restart again and pick the reader in the list.');
+      } else {
+        status('Stopped: ' + ((error as Error).message || String(error)));
+      }
+    } finally {
+      try {
+        await transport?.disconnect();
+      } catch {
+        // Already closed.
+      }
+      busy = false;
+      renderChoices();
+    }
   }
 
   async function firmwareBytes(target: Device): Promise<Uint8Array> {
@@ -225,8 +283,8 @@ import Base from '../layouts/Base.astro';
         },
       });
       status('Restarting the reader…', 1);
-      await loader.after('hard_reset');
-      status('Done. QuartzInk is restarting on your ' + spec.name + '.', 1);
+      await restartChip(transport);
+      status('Done. QuartzInk is starting on your ' + spec.name + '. You can unplug it.', 1);
     } catch (error) {
       const message = (error as Error).message || String(error);
       if ((error as DOMException).name === 'NotFoundError') {
@@ -255,6 +313,7 @@ import Base from '../layouts/Base.astro';
   }
   $('ownFile').addEventListener('change', renderChoices);
   $('install').addEventListener('click', install);
+  $('restart').addEventListener('click', restartOnly);
   loadBuild();
 </script>
 
@@ -317,5 +376,17 @@ import Base from '../layouts/Base.astro';
     color: var(--muted);
     white-space: pre-wrap;
   }
-  .own input { margin-top: 0.6rem; }
+  .own input,
+  .own .secondary { margin-top: 0.6rem; }
+  .secondary {
+    font: inherit;
+    padding: 0.55rem 1.2rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--smoky-raised);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+    cursor: pointer;
+  }
+  .secondary:disabled { opacity: 0.45; cursor: default; }
 </style>
