@@ -1,0 +1,321 @@
+---
+// Installs QuartzInk over USB from the browser (Web Serial, with Espressif's
+// esptool-js). The firmware comes from the latest-build release through
+// /flash/firmware.php, so there's nothing to download by hand.
+//
+// Where it writes comes from the reader itself: the page reads its partition
+// table and only goes ahead when the chip and layout match the reader picked.
+//   X3, X4, X4 Pro  app at ota_0 (0x10000), and otadata cleared so the reader
+//                   boots it even if an SD update had moved it to ota_1.
+//   Boox Picco      app at ota_0 (0xE0000) only. Its otadata is left alone:
+//                   cleared, the Picco would boot its recovery partition.
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Install QuartzInk" description="Install the latest QuartzInk on an Xteink X3, X4, X4 Pro or Boox Picco over USB, from your browser." stone="clear">
+  <section class="wrap flash">
+    <div class="flash__head">
+      <h1>Install QuartzInk</h1>
+      <p class="lede">
+        Installs the latest QuartzInk build over USB, straight from this page. Your books, settings and reading stats
+        live on the SD card and stay as they are.
+      </p>
+    </div>
+
+    <p class="notice" id="unsupported" hidden>
+      This browser can't talk to USB devices. Use Chrome or Edge on a computer (Windows, macOS, Linux or ChromeOS).
+    </p>
+
+    <ol class="steps">
+      <li>
+        <h2>Pick your reader</h2>
+        <div class="choices" role="radiogroup" aria-label="Reader">
+          <button type="button" role="radio" aria-checked="false" data-device="x3-x4">
+            <strong>Xteink X3 / X4</strong><span>Buttons</span>
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-device="x4-pro">
+            <strong>Xteink X4 Pro</strong><span>Touch</span>
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-device="picco">
+            <strong>Boox Picco</strong><span>Touch</span>
+          </button>
+        </div>
+        <p class="muted build" id="build">Checking for the latest build…</p>
+      </li>
+      <li>
+        <h2>Connect it</h2>
+        <p class="muted">
+          Plug the reader into this computer with a USB-C data cable and wake it up. When you press Install, choose its
+          port in the list the browser shows (often called “USB JTAG/serial debug unit”).
+        </p>
+      </li>
+      <li>
+        <h2>Install</h2>
+        <button type="button" class="install" id="install" disabled>Install QuartzInk</button>
+        <div class="progress" id="progress" hidden>
+          <div class="progress__bar"><span id="bar"></span></div>
+          <p id="status" role="status" aria-live="polite"></p>
+        </div>
+        <details class="log">
+          <summary>Details</summary>
+          <pre id="log"></pre>
+        </details>
+        <details class="own">
+          <summary>Install a .bin file of your own instead</summary>
+          <p class="muted">A QuartzInk or CrossPoint firmware.bin for the reader picked above. The same checks apply.</p>
+          <input type="file" id="ownFile" accept=".bin" />
+        </details>
+      </li>
+    </ol>
+  </section>
+</Base>
+
+<script>
+  import { ESPLoader, Transport } from 'esptool-js';
+
+  type Device = 'x3-x4' | 'x4-pro' | 'picco';
+  // What each reader must look like before anything is written.
+  const DEVICES: Record<Device, { name: string; chip: string; imageChipId: number; app: number; picco: boolean }> = {
+    'x3-x4': { name: 'Xteink X3 / X4', chip: 'ESP32-C3', imageChipId: 5, app: 0x10000, picco: false },
+    'x4-pro': { name: 'Xteink X4 Pro', chip: 'ESP32-S3', imageChipId: 9, app: 0x10000, picco: false },
+    picco: { name: 'Boox Picco', chip: 'ESP32-S3', imageChipId: 9, app: 0xe0000, picco: true },
+  };
+
+  type Partition = { type: number; subtype: number; offset: number; size: number; label: string };
+  type BuildInfo = { commit: string; subject: string; published: string; files: Record<string, { name: string; size: number }> };
+
+  let device: Device | null = null;
+  let build: BuildInfo | null = null;
+  let busy = false;
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const logEl = $('log');
+
+  function log(text: string, newline = true) {
+    logEl.textContent += text + (newline ? '\n' : '');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function status(text: string, fraction?: number) {
+    $('progress').hidden = false;
+    $('status').textContent = text;
+    if (fraction !== undefined) ($('bar') as HTMLElement).style.width = Math.round(fraction * 100) + '%';
+  }
+
+  function hex(n: number) {
+    return '0x' + n.toString(16).toUpperCase();
+  }
+
+  // ESP-IDF partition table: 32-byte entries from 0x8000, magic 0xAA 0x50.
+  function parsePartitions(bytes: Uint8Array): Partition[] {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const out: Partition[] = [];
+    for (let at = 0; at + 32 <= bytes.length; at += 32) {
+      if (bytes[at] !== 0xaa || bytes[at + 1] !== 0x50) break;
+      const label = new TextDecoder().decode(bytes.subarray(at + 12, at + 28)).replace(/\0.*$/s, '');
+      out.push({ type: bytes[at + 2], subtype: bytes[at + 3], offset: view.getUint32(at + 4, true), size: view.getUint32(at + 8, true), label });
+    }
+    return out;
+  }
+
+  function renderChoices() {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('.choices button')) {
+      button.setAttribute('aria-checked', String(button.dataset.device === device));
+    }
+    const ownFile = ($('ownFile') as HTMLInputElement).files?.[0];
+    const file = device && build ? build.files[device] : null;
+    ($('install') as HTMLButtonElement).disabled = busy || !device || (!file && !ownFile) || !('serial' in navigator);
+    if (!build) return;
+    const date = build.published ? new Date(build.published).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    let text = 'Latest build: ' + build.commit + (date ? ' · ' + date : '');
+    if (build.subject) text += ' · ' + build.subject;
+    if (file) text += ' · ' + (file.size / 1048576).toFixed(1) + ' MB';
+    if (ownFile) text = 'Your file: ' + ownFile.name;
+    $('build').textContent = text;
+  }
+
+  async function loadBuild() {
+    try {
+      const response = await fetch('/flash/firmware.php', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || response.statusText);
+      // The release notes start "Built from <sha>: <commit subject>".
+      const subject = String(data.notes || '').split('\n')[0].replace(/^Built from [0-9a-f]+:\s*/, '');
+      build = { ...data, subject };
+    } catch (error) {
+      $('build').textContent = 'Could not find the latest build (' + (error as Error).message + '). You can still install a .bin file of your own below.';
+    }
+    renderChoices();
+  }
+
+  async function firmwareBytes(target: Device): Promise<Uint8Array> {
+    const own = ($('ownFile') as HTMLInputElement).files?.[0];
+    if (own) return new Uint8Array(await own.arrayBuffer());
+    status('Downloading the firmware…', 0);
+    const response = await fetch('/flash/firmware.php?device=' + target, { cache: 'no-store' });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'Download failed (' + response.status + ')');
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  async function install() {
+    if (!device || busy) return;
+    const target = device;
+    const spec = DEVICES[target];
+    busy = true;
+    renderChoices();
+    logEl.textContent = '';
+    let transport: Transport | null = null;
+    try {
+      // Ask for the port first: the browser only allows it right after the click.
+      const port = await (navigator as any).serial.requestPort();
+      const bin = await firmwareBytes(target);
+      if (bin[0] !== 0xe9) throw new Error("That file isn't an ESP32 firmware image.");
+      const imageChip = bin[12] | (bin[13] << 8);
+      if (imageChip !== spec.imageChipId) {
+        throw new Error('That firmware is built for a different chip than the ' + spec.name + '.');
+      }
+      log('Firmware: ' + bin.length + ' bytes');
+
+      status('Connecting to the reader…', 0);
+      transport = new Transport(port, false);
+      const loader = new ESPLoader({
+        transport,
+        baudrate: 921600,
+        terminal: { clean() {}, writeLine: (s: string) => log(s), write: (s: string) => log(s, false) },
+      });
+      await loader.main();
+      const chip = loader.chip.CHIP_NAME;
+      log('Chip: ' + chip);
+      if (chip !== spec.chip) {
+        throw new Error('This reader has an ' + chip + ', not the ' + spec.chip + ' of the ' + spec.name + '. Pick the right reader above.');
+      }
+
+      status('Checking the reader’s layout…', 0);
+      const partitions = parsePartitions(await loader.readFlash(0x8000, 0xc00));
+      for (const p of partitions) log('Partition ' + p.label + ': ' + hex(p.offset) + ' (' + hex(p.size) + ')');
+      const app = partitions.find((p) => p.type === 0x00 && p.subtype === 0x10); // app, ota_0
+      const otadata = partitions.find((p) => p.type === 0x01 && p.subtype === 0x00); // data, ota
+      const factory = partitions.find((p) => p.type === 0x00 && p.subtype === 0x00);
+      if (!app || !otadata || app.offset !== spec.app || Boolean(factory) !== spec.picco) {
+        throw new Error(
+          "This reader's layout doesn't match the " + spec.name + ', so nothing was written. Check the reader picked above.'
+        );
+      }
+      if (bin.length > app.size) throw new Error('The firmware is larger than this reader’s app space.');
+
+      const files = [{ data: bin, address: app.offset }];
+      // A cleared otadata boots ota_0. Not on the Picco: with its recovery
+      // partition present, a cleared otadata boots that instead.
+      if (!spec.picco) files.push({ data: new Uint8Array(otadata.size).fill(0xff), address: otadata.offset });
+      log('Writing ' + hex(app.offset) + (spec.picco ? '' : ', clearing otadata at ' + hex(otadata.offset)));
+
+      status('Installing… keep the reader plugged in.', 0);
+      await loader.writeFlash({
+        fileArray: files,
+        flashMode: 'keep',
+        flashFreq: 'keep',
+        flashSize: 'keep',
+        eraseAll: false,
+        compress: true,
+        reportProgress: (index: number, written: number, total: number) => {
+          if (index === 0) status('Installing… keep the reader plugged in.', written / total);
+        },
+      });
+      status('Restarting the reader…', 1);
+      await loader.after('hard_reset');
+      status('Done. QuartzInk is restarting on your ' + spec.name + '.', 1);
+    } catch (error) {
+      const message = (error as Error).message || String(error);
+      if ((error as DOMException).name === 'NotFoundError') {
+        status('No port chosen. Press Install again and pick the reader in the list.');
+      } else {
+        status('Stopped: ' + message);
+        log('Error: ' + message);
+      }
+    } finally {
+      try {
+        await transport?.disconnect();
+      } catch {
+        // Already closed.
+      }
+      busy = false;
+      renderChoices();
+    }
+  }
+
+  if (!('serial' in navigator)) $('unsupported').hidden = false;
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.choices button')) {
+    button.addEventListener('click', () => {
+      device = button.dataset.device as Device;
+      renderChoices();
+    });
+  }
+  $('ownFile').addEventListener('change', renderChoices);
+  $('install').addEventListener('click', install);
+  loadBuild();
+</script>
+
+<style>
+  .flash { padding-block: clamp(2rem, 6vw, 4rem) clamp(3.5rem, 8vw, 6rem); max-width: 46rem; }
+  h1 { font-size: var(--step-5); }
+  .lede { margin-top: 1rem; color: var(--muted); font-size: var(--step-1); }
+  .notice {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .steps { list-style: none; padding: 0; margin: 2.25rem 0 0; display: grid; gap: 2rem; counter-reset: step; }
+  .steps > li { counter-increment: step; }
+  .steps h2 { font-size: var(--step-2); margin-bottom: 0.75rem; }
+  .steps h2::before { content: counter(step) '. '; color: var(--stone); }
+  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.75rem; }
+  .choices button {
+    display: grid;
+    gap: 0.15rem;
+    text-align: left;
+    font: inherit;
+    padding: 0.9rem 1.1rem;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--smoky-raised);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--line);
+    cursor: pointer;
+  }
+  .choices button span { color: var(--muted); font-size: var(--step--1); }
+  .choices button[aria-checked='true'] { box-shadow: inset 0 0 0 2px var(--stone); }
+  .build { margin-top: 0.75rem; font-size: var(--step--1); }
+  .install {
+    font: inherit;
+    font-weight: 500;
+    padding: 0.8rem 1.6rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--stone);
+    color: var(--smoky-deep);
+    cursor: pointer;
+  }
+  .install:disabled { opacity: 0.45; cursor: default; }
+  .progress { margin-top: 1.25rem; }
+  .progress__bar { height: 8px; border-radius: 99px; background: var(--smoky-raised); overflow: hidden; }
+  .progress__bar span { display: block; height: 100%; width: 0; background: var(--stone); transition: width 0.2s; }
+  .progress p { margin-top: 0.6rem; }
+  details { margin-top: 1.25rem; color: var(--muted); }
+  summary { cursor: pointer; }
+  pre {
+    margin-top: 0.6rem;
+    max-height: 16rem;
+    overflow: auto;
+    font-size: 0.8rem;
+    padding: 0.75rem;
+    border-radius: 10px;
+    background: var(--smoky-deep);
+    color: var(--muted);
+    white-space: pre-wrap;
+  }
+  .own input { margin-top: 0.6rem; }
+</style>

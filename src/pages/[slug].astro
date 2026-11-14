@@ -160,7 +160,14 @@ const shots = await Promise.all(
               </>
             ) : (
               <p class="note">
-                Flashing steps are in the{' '}
+                {app.id === 'quartzink' ? (
+                  <>
+                    Install it over USB from <a href="/flash/">the install page</a> in Chrome or Edge. Other ways are in
+                    the{' '}
+                  </>
+                ) : (
+                  <>Flashing steps are in the{' '}</>
+                )}
                 {d.repo ? <a href={`https://github.com/${d.repo}#readme`}>{d.name} README on GitHub</a> : 'README'}.
               </p>
             )}

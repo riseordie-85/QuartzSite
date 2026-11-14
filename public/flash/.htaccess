@@ -1,0 +1,3 @@
+Options -Indexes
+# firmware.php keeps its downloaded copies in cache/; only firmware.php serves them.
+RedirectMatch 404 ^/flash/cache(/|$)

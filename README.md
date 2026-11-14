@@ -118,3 +118,18 @@ in the gallery and on every reader straight away; there's no deploy.
 The gallery page (`src/pages/extras.astro`) and the readers load `catalog.json` in the browser.
 `public/extras/.htaccess` lets readers' dashboards fetch it from another address.
 
+
+## Install page for QuartzInk (/flash/)
+
+`src/pages/flash.astro` installs QuartzInk over USB from Chrome or Edge, using Espressif's
+esptool-js (Web Serial). It supports the Xteink X3/X4, X4 Pro and Boox Picco.
+
+- The firmware comes from QuartzInk's `latest-build` release, which its CI replaces on every
+  push to `main`. GitHub release files can't be fetched by a browser (no CORS), so
+  `public/flash/firmware.php` downloads them on the server, keeps one copy per device in
+  `public/flash/cache/` (created on first use), and serves them from this site. It checks
+  GitHub for a new build at most every five minutes.
+- Before writing anything, the page reads the reader's chip and partition table and stops
+  unless they match the reader picked. X3/X4 and X4 Pro get the app at 0x10000 and a cleared
+  otadata (so they boot it even after an SD update). The Picco gets the app at 0xE0000 only;
+  its otadata is left alone, because a cleared one would boot its recovery partition.
