@@ -6,7 +6,7 @@
 // The scene is a 3:2 picture. Everything on it is placed in percent of that
 // picture, measured from the 1131×754 mockups:
 //   device.webp   the device cut out of its mockup
-//   shadow.webp   its contact shadow on the table (e-ink only)
+//   shadow.webp   its shadow on the table
 //   screen        the display inside the device, where the screenshots go
 // scene.jpg is the intro video's last frame, so the still and the video line up.
 //
@@ -33,14 +33,26 @@ interface Props {
 const { id, dir, slides, label, kind = 'eink', intro = false, title } = Astro.props;
 const base = dir.replace(/\/$/, '');
 const phone = kind === 'phone';
-// [left, top, width, height] in percent: the device in the scene, the screen in the device.
+// [left, top, width, height] in percent: the device and its shadow in the scene,
+// the screen in the device.
 const GEOMETRY = {
-  eink: { device: [56.587, 16.976, 32.891, 79.841], screen: [10.753, 6.811, 73.656, 76.08], focus: 73.03 },
-  phone: { device: [59.416, 9.019, 28.117, 85.942], screen: [6.604, 3.395, 85.22, 93.056], focus: 73.43 },
+  eink: {
+    device: [56.587, 16.976, 32.891, 79.841],
+    shadow: [58.709, 94.164, 29.266, 2.122],
+    screen: [10.753, 6.811, 73.656, 76.08],
+    focus: 73.03,
+  },
+  phone: {
+    device: [59.24, 8.753, 28.647, 86.737],
+    shadow: [58.798, 20.822, 35.013, 75.199],
+    screen: [7.099, 3.67, 83.642, 92.202],
+    focus: 73.52,
+  },
 }[kind];
 const box = (r: number[], prefix: string) =>
   `--${prefix}-l:${r[0]}%;--${prefix}-t:${r[1]}%;--${prefix}-w:${r[2]}%;--${prefix}-h:${r[3]}%;`;
-const geometry = box(GEOMETRY.device, 'dev') + box(GEOMETRY.screen, 'scr') + `--focus:${GEOMETRY.focus}%;`;
+const geometry =
+  box(GEOMETRY.device, 'dev') + box(GEOMETRY.shadow, 'sh') + box(GEOMETRY.screen, 'scr') + `--focus:${GEOMETRY.focus}%;`;
 ---
 
 <section class:list={['tour', `tour--${kind}`]} aria-roledescription="carousel" aria-label={label}>
@@ -63,7 +75,7 @@ const geometry = box(GEOMETRY.device, 'dev') + box(GEOMETRY.screen, 'scr') + `--
             />
           )
         }
-        {!phone && <img class="tour__shadow" src={`${base}/shadow.webp`} alt="" decoding="async" />}
+        <img class="tour__shadow" src={`${base}/shadow.webp`} alt="" decoding="async" />
         <div class="tour__device">
           <img class="tour__body" src={`${base}/device.webp`} alt="" decoding="async" />
           <div class="tour__screen">
@@ -407,10 +419,10 @@ const geometry = box(GEOMETRY.device, 'dev') + box(GEOMETRY.screen, 'scr') + `--
 
   .tour__shadow {
     position: absolute;
-    left: 58.709%;
-    top: 94.164%;
-    width: 29.266%;
-    height: 2.122%;
+    left: var(--sh-l);
+    top: var(--sh-t);
+    width: var(--sh-w);
+    height: var(--sh-h);
   }
   .tour__device {
     position: absolute;
@@ -438,6 +450,17 @@ const geometry = box(GEOMETRY.device, 'dev') + box(GEOMETRY.screen, 'scr') + `--
   /* The screen's own corner radius (30 px on the 271 × 603 px mockup screen),
      so its white backing never shows past the frame's rounded corners. */
   .tour--phone .tour__screen {
+    border-radius: 11% / 5%;
+    background: #fff;
+  }
+  /* The lit screen arrives with the frame; its page fades in after. */
+  .tour--phone .tour__device::before {
+    content: '';
+    position: absolute;
+    left: var(--scr-l);
+    top: var(--scr-t);
+    width: var(--scr-w);
+    height: var(--scr-h);
     border-radius: 11% / 5%;
     background: #fff;
   }

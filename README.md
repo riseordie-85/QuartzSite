@@ -147,7 +147,7 @@ view, and gems switch between screenshots with a sheet of text beside them.
   (visitors can scroll them too); pages cross-fade.
 - `title` adds a heading above the tour.
 - Files live in `public/<dir>/`: `scene.jpg`, `device.webp`, each slide's image, plus
-  `intro.mp4` and `intro-poster.jpg` with `intro`, and `shadow.webp` for e-ink.
+  `intro.mp4` and `intro-poster.jpg` with `intro`, and `shadow.webp`.
 - To change the wording or add a slide, edit its `slides:` list. Blank lines in `text` start a
   new paragraph.
 - Visitors who ask for reduced motion get the finished scene with no video or animation.

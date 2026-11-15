@@ -50,7 +50,7 @@ const apps = defineCollection({
     // Guided tours: a device on the table that steps through screenshots with a
     // sheet of text beside it. Files live in public/<dir>/: scene.jpg,
     // device.webp, each slide's image, plus intro.mp4 and intro-poster.jpg with
-    // `intro`, and shadow.webp for the e-ink kind. See src/components/Showcase.astro.
+    // `intro`, and shadow.webp. See src/components/Showcase.astro.
     showcases: z
       .array(
         z.object({
