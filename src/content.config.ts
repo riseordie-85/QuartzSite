@@ -47,24 +47,29 @@ const apps = defineCollection({
         }),
       )
       .default([]),
-    // A guided tour: an intro video, then a device on the table that steps through
-    // screenshots with a sheet of text beside it. Files live in public/<dir>/:
-    // intro.mp4, intro-poster.jpg, scene.jpg, device.webp, shadow.webp, plus each
-    // slide's image. See src/components/Showcase.astro.
-    showcase: z
-      .object({
-        dir: z.string(),
-        slides: z.array(
-          z.object({
-            title: z.string(),
-            // Blank lines start a new paragraph.
-            text: z.string(),
-            image: z.string(),
-            alt: z.string(),
-          }),
-        ),
-      })
-      .optional(),
+    // Guided tours: a device on the table that steps through screenshots with a
+    // sheet of text beside it. Files live in public/<dir>/: scene.jpg,
+    // device.webp, each slide's image, plus intro.mp4 and intro-poster.jpg with
+    // `intro`, and shadow.webp for the e-ink kind. See src/components/Showcase.astro.
+    showcases: z
+      .array(
+        z.object({
+          dir: z.string(),
+          kind: z.enum(['eink', 'phone']).default('eink'),
+          intro: z.boolean().default(false),
+          title: z.string().optional(),
+          slides: z.array(
+            z.object({
+              title: z.string(),
+              // Blank lines start a new paragraph.
+              text: z.string(),
+              image: z.string(),
+              alt: z.string(),
+            }),
+          ),
+        }),
+      )
+      .default([]),
     // Screenshot slots to show as placeholders until real ones are added.
     screenshotSlots: z.array(z.enum(['phone', 'fold', 'tablet'])).default([]),
     support: z

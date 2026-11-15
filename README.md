@@ -135,16 +135,19 @@ esptool-js (Web Serial). It supports the Xteink X3/X4, X4 Pro and Boox Picco.
   otadata (so they boot it even after an SD update). The Picco gets the app at 0xE0000 only;
   its otadata is left alone, because a cleared one would boot its recovery partition.
 
-## Feature tour on an app page (showcase)
+## Feature tours on an app page (showcases)
 
-An app's Markdown can add a `showcase:` block (see `src/content/apps/quartzink.md`). It shows
-`src/components/Showcase.astro` under the intro: the intro video plays when the tour scrolls
-into view, the reader settles onto the table, and gems switch between screenshots with a
-sheet of text beside them.
+An app's Markdown can list `showcases:` (see `src/content/apps/quartzink.md`). Each one is a
+tour (`src/components/Showcase.astro`): a device settles onto the table when it scrolls into
+view, and gems switch between screenshots with a sheet of text beside them.
 
-- Files live in `public/<dir>/`: `intro.mp4`, `intro-poster.jpg` (first frame), `scene.jpg`
-  (last frame), `device.webp` and `shadow.webp` (cut out of the mockup), plus each slide's
-  image (480×800 screenshots).
-- To change the wording or add a slide, edit the `slides:` list. Blank lines in `text` start a
+- `kind: eink` (default) shows 480×800 screenshots on the e-reader, tinted to its grey panel,
+  with an e-ink style flash between pages. `intro: true` plays the intro video first.
+- `kind: phone` shows full-page web screenshots under the phone's frame, scrolling slowly
+  (visitors can scroll them too); pages cross-fade.
+- `title` adds a heading above the tour.
+- Files live in `public/<dir>/`: `scene.jpg`, `device.webp`, each slide's image, plus
+  `intro.mp4` and `intro-poster.jpg` with `intro`, and `shadow.webp` for e-ink.
+- To change the wording or add a slide, edit its `slides:` list. Blank lines in `text` start a
   new paragraph.
 - Visitors who ask for reduced motion get the finished scene with no video or animation.

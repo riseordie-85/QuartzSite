@@ -73,7 +73,19 @@ const shots = await Promise.all(
     />
   </section>
 
-  {d.showcase && <Showcase dir={d.showcase.dir} slides={d.showcase.slides} label={`${d.name} tour`} />}
+  {
+    d.showcases.map((tour, i) => (
+      <Showcase
+        id={`tour${i}`}
+        dir={tour.dir}
+        kind={tour.kind}
+        intro={tour.intro}
+        title={tour.title}
+        slides={tour.slides}
+        label={tour.title ?? `${d.name} tour`}
+      />
+    ))
+  }
 
   {
     (d.screenshots.length > 0 || showSlots) && (

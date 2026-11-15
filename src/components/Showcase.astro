@@ -1,14 +1,20 @@
 ---
-// A guided tour of an e-reader app. The intro video plays when the tour scrolls
-// into view (crystals arrive on the table), then the reader settles onto the
-// table, the sheet slides in, and the gems switch between screenshots.
+// A guided tour of an app. The device settles onto the table when the tour
+// scrolls into view (after the intro video, if there is one), the sheet slides
+// in, and the gems switch between screenshots.
 //
 // The scene is a 3:2 picture. Everything on it is placed in percent of that
-// picture, measured from the 1131×754 mockup:
-//   device.webp   the reader cut out of the mockup (body and side buttons)
-//   shadow.webp   its contact shadow on the table
+// picture, measured from the 1131×754 mockups:
+//   device.webp   the device cut out of its mockup
+//   shadow.webp   its contact shadow on the table (e-ink only)
 //   screen        the display inside the device, where the screenshots go
-// scene.jpg is the video's last frame, so the still and the video line up.
+// scene.jpg is the intro video's last frame, so the still and the video line up.
+//
+// Kinds:
+//   eink   480×800 screenshots multiplied onto the reader's grey panel, with an
+//          e-ink style flash between pages.
+//   phone  full-page web screenshots under the phone's frame (its screen is
+//          transparent), scrolling slowly; pages cross-fade.
 interface Slide {
   title: string;
   text: string;
@@ -16,56 +22,87 @@ interface Slide {
   alt: string;
 }
 interface Props {
+  id: string;
   dir: string;
   slides: Slide[];
   label: string;
+  kind?: 'eink' | 'phone';
+  intro?: boolean;
+  title?: string;
 }
-const { dir, slides, label } = Astro.props;
+const { id, dir, slides, label, kind = 'eink', intro = false, title } = Astro.props;
 const base = dir.replace(/\/$/, '');
-const id = 'tour';
+const phone = kind === 'phone';
+// [left, top, width, height] in percent: the device in the scene, the screen in the device.
+const GEOMETRY = {
+  eink: { device: [56.587, 16.976, 32.891, 79.841], screen: [10.753, 6.811, 73.656, 76.08], focus: 73.03 },
+  phone: { device: [59.416, 9.019, 28.117, 85.942], screen: [6.604, 3.395, 85.22, 93.056], focus: 73.43 },
+}[kind];
+const box = (r: number[], prefix: string) =>
+  `--${prefix}-l:${r[0]}%;--${prefix}-t:${r[1]}%;--${prefix}-w:${r[2]}%;--${prefix}-h:${r[3]}%;`;
+const geometry = box(GEOMETRY.device, 'dev') + box(GEOMETRY.screen, 'scr') + `--focus:${GEOMETRY.focus}%;`;
 ---
 
-<section class="tour" aria-roledescription="carousel" aria-label={label}>
-  <div class="tour__stage" data-state="ready">
+<section class:list={['tour', `tour--${kind}`]} aria-roledescription="carousel" aria-label={label}>
+  {title && <h2 class="tour__title">{title}</h2>}
+  <div class="tour__stage" data-state="ready" data-intro={intro ? 'video' : 'none'} style={geometry}>
     <div class="tour__view">
       <div class="tour__scene">
         <img class="tour__still" src={`${base}/scene.jpg`} alt="" width="1131" height="754" decoding="async" />
-        <video
-          class="tour__video"
-          src={`${base}/intro.mp4`}
-          poster={`${base}/intro-poster.jpg`}
-          muted
-          playsinline
-          preload="metadata"
-          aria-hidden="true"
-          tabindex="-1"></video>
-        <img class="tour__shadow" src={`${base}/shadow.webp`} alt="" decoding="async" />
+        {
+          intro && (
+            <video
+              class="tour__video"
+              src={`${base}/intro.mp4`}
+              poster={`${base}/intro-poster.jpg`}
+              muted
+              playsinline
+              preload="metadata"
+              aria-hidden="true"
+              tabindex="-1"
+            />
+          )
+        }
+        {!phone && <img class="tour__shadow" src={`${base}/shadow.webp`} alt="" decoding="async" />}
         <div class="tour__device">
           <img class="tour__body" src={`${base}/device.webp`} alt="" decoding="async" />
           <div class="tour__screen">
             {
-              slides.map((s, i) => (
-                <img
-                  class:list={['tour__shot', { 'is-active': i === 0 }]}
-                  src={`${base}/${s.image}`}
-                  alt={i === 0 ? s.alt : ''}
-                  aria-hidden={i === 0 ? undefined : 'true'}
-                  data-alt={s.alt}
-                  width="480"
-                  height="800"
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  decoding="async"
-                />
-              ))
+              slides.map((s, i) =>
+                phone ? (
+                  <div class:list={['tour__shot', 'tour__page', { 'is-active': i === 0 }]} aria-hidden={i === 0 ? undefined : 'true'}>
+                    <img
+                      src={`${base}/${s.image}`}
+                      alt={i === 0 ? s.alt : ''}
+                      data-alt={s.alt}
+                      width="540"
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                  </div>
+                ) : (
+                  <img
+                    class:list={['tour__shot', { 'is-active': i === 0 }]}
+                    src={`${base}/${s.image}`}
+                    alt={i === 0 ? s.alt : ''}
+                    aria-hidden={i === 0 ? undefined : 'true'}
+                    data-alt={s.alt}
+                    width="480"
+                    height="800"
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                  />
+                ),
+              )
             }
-            <span class="tour__flash" aria-hidden="true"></span>
+            {!phone && <span class="tour__flash" aria-hidden="true" />}
           </div>
         </div>
       </div>
-      <button type="button" class="tour__skip">Skip intro</button>
+      {intro && <button type="button" class="tour__skip">Skip intro</button>}
     </div>
 
-    <div class="tour__gems" role="tablist" aria-label="QuartzInk features">
+    <div class="tour__gems" role="tablist" aria-label={label}>
       {
         slides.map((s, i) => (
           <button
@@ -128,14 +165,84 @@ const id = 'tour';
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   for (const stage of document.querySelectorAll<HTMLElement>('.tour__stage')) {
-    const video = stage.querySelector<HTMLVideoElement>('.tour__video')!;
+    const video = stage.querySelector<HTMLVideoElement>('.tour__video');
     const tabs = [...stage.querySelectorAll<HTMLButtonElement>('.tour__gem')];
     const panels = [...stage.querySelectorAll<HTMLElement>('.tour__panel')];
-    const shots = [...stage.querySelectorAll<HTMLImageElement>('.tour__shot')];
-    const flash = stage.querySelector<HTMLElement>('.tour__flash')!;
+    const shots = [...stage.querySelectorAll<HTMLElement>('.tour__shot')];
+    const flash = stage.querySelector<HTMLElement>('.tour__flash');
+    const pages = shots.every((shot) => shot.classList.contains('tour__page'));
     const view = stage.querySelector<HTMLElement>('.tour__view')!;
     let current = 0;
     let swapTimer = 0;
+
+    // Phone pages scroll slowly down, rest, and return to the top, while the
+    // tour is on screen. Touching or scrolling a page pauses it for a while.
+    const scroller = (() => {
+      const SPEED = 38; // CSS px per second
+      let phase: 'top' | 'down' | 'bottom' = 'top';
+      let phaseAt = 0;
+      let last = 0;
+      let pos = 0;
+      let pausedUntil = 0;
+      let frame = 0;
+      let visible = false;
+      const page = () => shots[current];
+      const tick = (now: number) => {
+        frame = 0;
+        const el = page();
+        const max = el.scrollHeight - el.clientHeight;
+        if (now < pausedUntil) {
+          pos = el.scrollTop;
+          last = now;
+        } else if (max > 4) {
+          if (phase === 'top' && now - phaseAt > 1800) {
+            phase = 'down';
+            last = now;
+            pos = el.scrollTop;
+          } else if (phase === 'down') {
+            pos = Math.min(max, pos + (SPEED * (now - last)) / 1000);
+            last = now;
+            el.scrollTop = pos;
+            if (pos >= max) {
+              phase = 'bottom';
+              phaseAt = now;
+            }
+          } else if (phase === 'bottom' && now - phaseAt > 2600) {
+            el.scrollTo({ top: 0, behavior: 'smooth' });
+            phase = 'top';
+            phaseAt = now + 900;
+            pos = 0;
+          }
+        }
+        if (visible) frame = requestAnimationFrame(tick);
+      };
+      const run = () => {
+        if (!frame && visible && !reduceMotion && stage.dataset.state === 'ready') frame = requestAnimationFrame(tick);
+      };
+      for (const shot of shots) {
+        const pause = () => (pausedUntil = performance.now() + 6000);
+        shot.addEventListener('wheel', pause, { passive: true });
+        shot.addEventListener('touchstart', pause, { passive: true });
+        shot.addEventListener('pointerdown', pause);
+      }
+      if (pages) {
+        new IntersectionObserver((entries) => {
+          visible = entries.some((entry) => entry.isIntersecting);
+          run();
+        }).observe(stage);
+      }
+      return {
+        restart() {
+          const el = page();
+          el.scrollTop = 0;
+          pos = 0;
+          phase = 'top';
+          phaseAt = performance.now();
+          pausedUntil = 0;
+          run();
+        },
+      };
+    })();
 
     // Gems and text can't be reached until the device is on the table.
     const setInert = (inert: boolean) => {
@@ -144,16 +251,22 @@ const id = 'tour';
 
     function finishIntro(skipped: boolean) {
       if (stage.dataset.state === 'ready') return;
-      if (skipped) {
+      if (skipped && video) {
         video.pause();
         stage.classList.add('is-skipped');
       }
       stage.dataset.state = 'ready';
       setInert(false);
+      if (pages) scroller.restart();
     }
 
     function startIntro() {
       if (stage.dataset.state !== 'idle') return;
+      // Without a video, the device just settles onto the table.
+      if (!video) {
+        finishIntro(false);
+        return;
+      }
       stage.dataset.state = 'intro';
       // Autoplay can be refused (battery saver, data saver); then skip straight to the end.
       const fallback = window.setTimeout(() => finishIntro(true), 3000);
@@ -178,14 +291,17 @@ const id = 'tour';
         shots.forEach((shot, i) => {
           const on = i === next;
           shot.classList.toggle('is-active', on);
-          shot.alt = on ? shot.dataset.alt || '' : '';
+          const img = shot instanceof HTMLImageElement ? shot : shot.querySelector('img')!;
+          img.alt = on ? img.dataset.alt || '' : '';
           if (on) shot.removeAttribute('aria-hidden');
           else shot.setAttribute('aria-hidden', 'true');
         });
+        if (pages) scroller.restart();
       };
       current = next;
       window.clearTimeout(swapTimer);
-      if (reduceMotion) {
+      // Phone pages cross-fade (CSS); reduced motion swaps at once.
+      if (reduceMotion || !flash) {
         swap();
         return;
       }
@@ -229,9 +345,9 @@ const id = 'tour';
       }
     });
 
-    stage.querySelector('.tour__skip')!.addEventListener('click', () => finishIntro(true));
-    video.addEventListener('ended', () => finishIntro(false));
-    video.addEventListener('error', () => finishIntro(true));
+    stage.querySelector('.tour__skip')?.addEventListener('click', () => finishIntro(true));
+    video?.addEventListener('ended', () => finishIntro(false));
+    video?.addEventListener('error', () => finishIntro(true));
 
     if (stage.dataset.state === 'idle') {
       setInert(true);
@@ -298,10 +414,10 @@ const id = 'tour';
   }
   .tour__device {
     position: absolute;
-    left: 56.587%;
-    top: 16.976%;
-    width: 32.891%;
-    height: 79.841%;
+    left: var(--dev-l);
+    top: var(--dev-t);
+    width: var(--dev-w);
+    height: var(--dev-h);
   }
   .tour__body {
     position: absolute;
@@ -311,15 +427,53 @@ const id = 'tour';
   }
   .tour__screen {
     position: absolute;
-    left: 10.753%;
-    top: 6.811%;
-    width: 73.656%;
-    height: 76.08%;
+    left: var(--scr-l);
+    top: var(--scr-t);
+    width: var(--scr-w);
+    height: var(--scr-h);
     border-radius: 2.4% / 1.4%;
     overflow: hidden;
   }
+  /* Phone: the pages sit under the frame, whose screen is transparent. */
+  /* The screen's own corner radius (30 px on the 271 × 603 px mockup screen),
+     so its white backing never shows past the frame's rounded corners. */
+  .tour--phone .tour__screen {
+    border-radius: 11% / 5%;
+    background: #fff;
+  }
+  .tour--phone .tour__body {
+    z-index: 1;
+    pointer-events: none;
+  }
+  .tour__page {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.35s ease,
+      visibility 0s linear 0.35s;
+  }
+  .tour__page::-webkit-scrollbar { display: none; }
+  .tour__page.is-active {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.35s ease;
+  }
+  .tour__page img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .tour__title {
+    margin: 0 0 1rem;
+    font-size: var(--step-3);
+  }
   /* Multiplied onto the panel, white paper takes the screen's own warm grey. */
-  .tour__shot {
+  img.tour__shot {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -327,7 +481,7 @@ const id = 'tour';
     mix-blend-mode: multiply;
     opacity: 0;
   }
-  .tour__shot.is-active { opacity: 0.9; }
+  img.tour__shot.is-active { opacity: 0.9; }
   .tour__flash {
     position: absolute;
     inset: 0;
@@ -513,6 +667,7 @@ const id = 'tour';
   /* Narrow screens: crop the scene around the reader, gems and text below it. */
   @media (max-width: 52rem) {
     .tour { padding-inline: 0; }
+    .tour__title { padding-inline: var(--gutter); }
     .tour__stage {
       border-radius: 0;
       background: none;
@@ -528,7 +683,7 @@ const id = 'tour';
       inset: 0 auto 0 50%;
       height: 100%;
       aspect-ratio: 3 / 2;
-      transform: translateX(-73.03%);
+      transform: translateX(calc(-1 * var(--focus)));
     }
     .tour__gems {
       position: relative;
