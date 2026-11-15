@@ -1,6 +1,7 @@
 Options -Indexes
 DirectoryIndex index.php
-# Only index.php is a page; the password hash and login counter are not.
-<FilesMatch "^(config\.php|\.login-throttle\.json|\.user\.ini)$">
+# index.php is the admin page and convert.php the font converter's endpoint.
+# The shared code, password hash, login counter and conversion list are not pages.
+<FilesMatch "^(common\.php|config\.php|\.login-throttle\.json|conversions\.json(\.lock|\.tmp)?|\.user\.ini)$">
   Require all denied
 </FilesMatch>

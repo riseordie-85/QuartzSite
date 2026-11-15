@@ -42,13 +42,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Extras admin password
+      - name: Extras admin settings
+        # config.php holds the admin password's hash and the token that starts
+        # font conversions. .htaccess keeps it from being served.
         env:
           EXTRAS_ADMIN_PASSWORD: ${{ secrets.EXTRAS_ADMIN_PASSWORD }}
+          EXTRAS_GITHUB_TOKEN: ${{ secrets.EXTRAS_GITHUB_TOKEN }}
         run: |
           if [ -n "$EXTRAS_ADMIN_PASSWORD" ]; then
-            php -r 'echo "<?php return [\"hash\" => ", var_export(password_hash(getenv("EXTRAS_ADMIN_PASSWORD"), PASSWORD_DEFAULT), true), "];\n";' > dist/extras/admin/config.php
+            php -r '
+              $config = ["hash" => password_hash(getenv("EXTRAS_ADMIN_PASSWORD"), PASSWORD_DEFAULT)];
+              if (getenv("EXTRAS_GITHUB_TOKEN") !== false && getenv("EXTRAS_GITHUB_TOKEN") !== "") {
+                  $config["github_token"] = getenv("EXTRAS_GITHUB_TOKEN");
+              }
+              echo "<?php return ", var_export($config, true), ";\n";
+            ' > dist/extras/admin/config.php
             echo "Wrote the Extras admin password hash."
+            [ -n "$EXTRAS_GITHUB_TOKEN" ] && echo "Font conversion is on." || echo "No EXTRAS_GITHUB_TOKEN secret; fonts won't be converted for the X3."
           else
             echo "No EXTRAS_ADMIN_PASSWORD secret; the Extras admin page stays locked."
           fi

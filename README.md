@@ -104,7 +104,7 @@ jobs:
 (**Extras** at `http://quartzink.local`) reads the same list and installs items onto the device.
 
 You add things at **`/extras/admin/`**, a password-protected upload page. Pick the type, give it a name and a credit,
-choose the file (or, for a font, all of its style files plus any `.cpfont` packs for the X3) and press Add. It shows up
+choose the file (or, for a font, all of its style files) and press Add. It shows up
 in the gallery and on every reader straight away; there's no deploy.
 
 - **Password:** add a repository secret named `EXTRAS_ADMIN_PASSWORD` (Settings > Secrets and variables > Actions),
@@ -114,6 +114,12 @@ in the gallery and on every reader straight away; there's no deploy.
 - **Previews** are made on upload: a small JPEG for wallpapers, a PNG for overlays and a sample image for fonts.
 - **Sizes:** the upload page accepts up to 24 MB per file (`public/extras/admin/.user.ini`).
 - **Overlays** made at 480 × 800 fit the X4, X4 Pro and Picco and stretch to the X3.
+- **Fonts for the X3:** the X4 Pro and Picco load TTF/OTF fonts, but the X3 needs `.cpfont` files. When you add a
+  TTF/OTF font, the page asks GitHub to run `.github/workflows/convert-fonts.yml`, which uses QuartzInk's own converter
+  (Latin characters, sizes 12–18; `scripts/convert_extras_font.py`) and sends the files back. It takes a few minutes;
+  each font in the list shows whether its X3 version is ready, with a button to convert again. It needs a repository
+  secret named `EXTRAS_GITHUB_TOKEN`: a fine-grained token with access to only this repo and **Actions: Read and
+  write**. The deploy puts it in the server's `config.php`. Uploading your own `.cpfont` files skips the conversion.
 
 The gallery page (`src/pages/extras.astro`) and the readers load `catalog.json` in the browser.
 `public/extras/.htaccess` lets readers' dashboards fetch it from another address.

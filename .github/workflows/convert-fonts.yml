@@ -1,0 +1,61 @@
+# Makes .cpfont versions of an Extras gallery font, for the X3.
+# The Extras admin page starts this (public/extras/admin/common.php,
+# start_conversion) when a TTF/OTF font is added or "Convert for the X3" is
+# pressed. See scripts/convert_extras_font.py.
+name: Convert an Extras font
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Conversion job id (from the Extras admin page)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: convert-fonts-${{ inputs.job }}
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check the job id
+        env:
+          JOB: ${{ inputs.job }}
+        run: |
+          if ! [[ "$JOB" =~ ^[a-z0-9-]+\.[0-9a-f]{16}$ ]]; then
+            echo "Not a job id." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - name: Get QuartzInk's font converter
+        uses: actions/checkout@v4
+        with:
+          repository: riseordie-85/QuartzInk
+          path: quartzink
+          sparse-checkout: |
+            lib/EpdFont/scripts
+            lib/EpdFont/builtinFonts/source/NotoSans
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the converter's requirements
+        run: pip install -r quartzink/lib/EpdFont/scripts/requirements.txt requests
+
+      - name: Convert
+        env:
+          JOB: ${{ inputs.job }}
+          TOKEN: ${{ secrets.EXTRAS_GITHUB_TOKEN }}
+          SITE: https://quartz.timcordova.com
+          CONVERTER: quartzink/lib/EpdFont/scripts/fontconvert_sdcard.py
+          FALLBACK: quartzink/lib/EpdFont/builtinFonts/source/NotoSans/NotoSans-Regular.ttf
+        run: python scripts/convert_extras_font.py

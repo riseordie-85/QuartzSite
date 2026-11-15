@@ -11,19 +11,8 @@
 
 declare(strict_types=1);
 
-const EXTRAS_DIR = __DIR__ . '/..';
-const FILES_DIR = EXTRAS_DIR . '/files';
-const CATALOG_PATH = EXTRAS_DIR . '/catalog.json';
-const CONFIG_PATH = __DIR__ . '/config.php';
-const THROTTLE_PATH = __DIR__ . '/.login-throttle.json';
-const PREVIEW_WIDTH = 360;
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-const MAX_FONT_BYTES = 8 * 1024 * 1024;
-const TYPES = [
-    'wallpaper' => ['label' => 'Wallpaper', 'exts' => ['jpg', 'jpeg', 'png', 'webp', 'bmp']],
-    'overlay' => ['label' => 'Overlay', 'exts' => ['png']],
-    'font' => ['label' => 'Font', 'exts' => ['ttf', 'otf', 'cpfont']],
-];
+require __DIR__ . '/common.php';
+
 
 session_set_cookie_params([
     'path' => '/extras/admin/',
@@ -69,15 +58,6 @@ function check_csrf(): void
 
 // ---- Login ------------------------------------------------------------------
 
-function config_hash(): ?string
-{
-    if (!is_file(CONFIG_PATH)) {
-        return null;
-    }
-    $config = include CONFIG_PATH;
-    return is_array($config) && !empty($config['hash']) ? (string)$config['hash'] : null;
-}
-
 // Slows password guessing: after 5 wrong tries from one address, 15 minutes off.
 function throttle_read(): array
 {
@@ -106,106 +86,12 @@ function note_login_failure(string $ip): void
 
 // ---- Catalog ----------------------------------------------------------------
 
-function empty_catalog(): array
-{
-    return ['format' => 'quartzink-extras', 'version' => 1, 'updated' => gmdate('c'), 'items' => []];
-}
-
-function read_catalog(): array
-{
-    if (!is_file(CATALOG_PATH)) {
-        return empty_catalog();
-    }
-    $data = json_decode((string)file_get_contents(CATALOG_PATH), true);
-    return is_array($data) && isset($data['items']) && is_array($data['items']) ? $data : empty_catalog();
-}
-
-// Runs $change on the catalog under a lock and writes it back in one step, so
-// a reader never sees half a file and two uploads never lose each other.
-function update_catalog(callable $change): void
-{
-    $lock = fopen(CATALOG_PATH . '.lock', 'c');
-    if (!$lock || !flock($lock, LOCK_EX)) {
-        throw new RuntimeException('Could not lock the catalog.');
-    }
-    try {
-        $catalog = read_catalog();
-        $catalog['items'] = array_values($change($catalog['items']));
-        $catalog['updated'] = gmdate('c');
-        $tmp = CATALOG_PATH . '.tmp';
-        $json = json_encode($catalog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        if ($json === false || file_put_contents($tmp, $json . "\n") === false || !rename($tmp, CATALOG_PATH)) {
-            throw new RuntimeException('Could not save the catalog.');
-        }
-    } finally {
-        flock($lock, LOCK_UN);
-        fclose($lock);
-    }
-}
-
 // ---- Files ------------------------------------------------------------------
 
 function slugify(string $text): string
 {
     $slug = strtolower(trim((string)preg_replace('/[^A-Za-z0-9]+/', '-', $text), '-'));
     return $slug !== '' ? substr($slug, 0, 48) : 'item';
-}
-
-// Names the device and the web can both use: letters, numbers, space, - _ ( ) .
-function safe_file_name(string $name): string
-{
-    $name = basename(str_replace('\\', '/', $name));
-    $name = (string)preg_replace('/[^A-Za-z0-9 _\-().]+/', '_', $name);
-    $name = trim($name, ". \t");
-    return $name !== '' ? substr($name, 0, 100) : 'file';
-}
-
-function ext_of(string $name): string
-{
-    return strtolower(pathinfo($name, PATHINFO_EXTENSION));
-}
-
-function ensure_files_dir(): void
-{
-    if (!is_dir(FILES_DIR) && !mkdir(FILES_DIR, 0755, true)) {
-        throw new RuntimeException('Could not create the files folder.');
-    }
-    // Uploaded files are only ever downloaded, never run.
-    $guard = FILES_DIR . '/.htaccess';
-    if (!is_file($guard)) {
-        file_put_contents($guard, "Options -Indexes -ExecCGI\n<FilesMatch \"\\.(php[0-9]?|phtml|phar|pl|py|cgi|sh|html?|svg|js)$\">\n  Require all denied\n</FilesMatch>\n");
-    }
-}
-
-function remove_dir(string $dir): void
-{
-    if (!is_dir($dir)) {
-        return;
-    }
-    foreach (scandir($dir) ?: [] as $entry) {
-        if ($entry === '.' || $entry === '..') {
-            continue;
-        }
-        $path = $dir . '/' . $entry;
-        is_dir($path) ? remove_dir($path) : unlink($path);
-    }
-    rmdir($dir);
-}
-
-function catalog_url(string $id, string $file): string
-{
-    return 'files/' . rawurlencode($id) . '/' . rawurlencode($file);
-}
-
-// Checks the bytes, not just the name: a font must start with a font signature.
-function font_signature_ok(string $path, string $ext): bool
-{
-    $head = (string)file_get_contents($path, false, null, 0, 8);
-    if ($ext === 'cpfont') {
-        return strncmp($head, "CPFONT\0", 7) === 0;
-    }
-    $tag = substr($head, 0, 4);
-    return $tag === "\x00\x01\x00\x00" || $tag === 'true' || $tag === 'OTTO';
 }
 
 function load_image(string $path)
@@ -446,7 +332,53 @@ function add_item(): string
         remove_dir($dir);
         throw $e;
     }
+
+    // The X3 needs .cpfont files; make them unless they came with the upload.
+    $hasCpfont = in_array('cpfont', array_column($item['files'], 'format'), true);
+    if ($type === 'font' && !$hasCpfont && font_sources($item) && github_token() !== null) {
+        try {
+            start_conversion($item);
+            return 'Added ' . $name . '. Converting it for the X3; this takes a few minutes.';
+        } catch (Throwable $e) {
+            return 'Added ' . $name . ', but ' . lcfirst($e->getMessage());
+        }
+    }
     return 'Added ' . $name . '.';
+}
+
+function convert_item(): string
+{
+    $id = (string)($_POST['id'] ?? '');
+    foreach (read_catalog()['items'] as $item) {
+        if ($item['id'] === $id) {
+            start_conversion($item);
+            return 'Converting ' . $item['name'] . ' for the X3; this takes a few minutes.';
+        }
+    }
+    throw new RuntimeException('That item is gone.');
+}
+
+// What the item list says about a font's .cpfont files.
+function conversion_status(array $item, array $conversions): ?array
+{
+    if ($item['type'] !== 'font' || !font_sources($item)) {
+        return null;
+    }
+    $hasCpfont = in_array('cpfont', array_column($item['files'], 'format'), true);
+    $conversion = $conversions[$item['id']] ?? null;
+    if ($conversion && $conversion['state'] === 'running' && time() - $conversion['at'] < CONVERT_STALE_SECONDS) {
+        return ['text' => 'Converting for the X3…', 'class' => 'pending', 'button' => null];
+    }
+    if ($conversion && $conversion['state'] === 'failed') {
+        return ['text' => $conversion['message'] ?: 'Conversion failed.', 'class' => 'bad', 'button' => 'Try again'];
+    }
+    if ($conversion && $conversion['state'] === 'running') {
+        return ['text' => 'The conversion never reported back.', 'class' => 'bad', 'button' => 'Try again'];
+    }
+    if ($hasCpfont) {
+        return ['text' => 'Ready for the X3', 'class' => 'good', 'button' => 'Reconvert'];
+    }
+    return ['text' => 'No X3 version yet', 'class' => 'bad', 'button' => 'Convert for the X3'];
 }
 
 function edit_item(): string
@@ -496,6 +428,9 @@ function delete_item(): string
     if (preg_match('/^[a-z0-9-]+$/', $id)) {
         remove_dir(FILES_DIR . '/' . $id);
     }
+    update_conversions(function (array &$conversions) use ($id) {
+        unset($conversions[$id]);
+    });
     return 'Deleted ' . $name . '.';
 }
 
@@ -534,6 +469,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 case 'delete':
                     flash(delete_item());
                     break;
+                case 'convert':
+                    flash(convert_item());
+                    break;
                 case 'logout':
                     $_SESSION = [];
                     session_destroy();
@@ -553,6 +491,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 $catalog = $loggedIn ? read_catalog() : null;
+$conversions = $loggedIn ? read_conversions() : [];
+$canConvert = github_token() !== null;
 $maxUpload = ini_get('upload_max_filesize');
 ?>
 <!doctype html>
@@ -589,6 +529,11 @@ $maxUpload = ini_get('upload_max_filesize');
     .thumb { width: 96px; height: 120px; border-radius: 8px; background: #fff; object-fit: contain; }
     .thumb.none { display: grid; place-items: center; color: #555; font-size: 0.8rem; }
     .tag { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.55rem; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); margin-left: 0.4rem; }
+    .convert { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 0.3rem 0 0; font-size: 0.85rem; }
+    .convert button { font-size: 0.8rem; padding: 0.2rem 0.7rem; }
+    .status.good { color: #9fe0b8; }
+    .status.pending { color: var(--stone); }
+    .status.bad { color: var(--bad); }
     details summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; }
     .login { max-width: 22rem; margin: 15vh auto 0; }
     [hidden] { display: none !important; }
@@ -631,7 +576,7 @@ $maxUpload = ini_get('upload_max_filesize');
     <select id="type" name="type">
       <option value="wallpaper">Wallpaper (JPG, PNG, WebP or BMP)</option>
       <option value="overlay">Overlay (transparent PNG, 480 × 800 works on every device)</option>
-      <option value="font">Font (TTF or OTF, plus .cpfont files for the X3)</option>
+      <option value="font">Font (TTF or OTF)</option>
     </select>
     <div class="grid2">
       <div>
@@ -679,6 +624,18 @@ $maxUpload = ini_get('upload_max_filesize');
               <?= h($item['credit'] ? 'By ' . $item['credit'] : 'No credit') ?><?= $item['license'] ? ' · ' . h($item['license']) : '' ?> · added <?= h($item['added']) ?>
               · <?= h(implode(', ', array_column($item['files'], 'name'))) ?>
             </p>
+            <?php $status = conversion_status($item, $conversions); ?>
+            <?php if ($status): ?>
+              <form method="post" class="convert">
+                <span class="status <?= h($status['class']) ?>"><?= h($status['text']) ?></span>
+                <?php if ($status['button'] && $canConvert): ?>
+                  <input type="hidden" name="id" value="<?= h($item['id']) ?>">
+                  <input type="hidden" name="action" value="convert">
+                  <input type="hidden" name="csrf" value="<?= h(csrf_token()) ?>">
+                  <button><?= h($status['button']) ?></button>
+                <?php endif; ?>
+              </form>
+            <?php endif; ?>
             <details>
               <summary>Edit</summary>
               <form method="post">
@@ -709,7 +666,9 @@ $maxUpload = ini_get('upload_max_filesize');
     const notes = {
       wallpaper: 'Upload the full-size image; each device resizes it for its own screen.',
       overlay: 'A transparent PNG. Made at 480 × 800 it fits the X4, X4 Pro and Picco and stretches to the X3.',
-      font: "Choose all the styles at once (Regular, Bold, Italic…). Add .cpfont files too so it installs on the X3.",
+      font: <?= json_encode($canConvert
+        ? 'Choose all the styles at once (Regular, Bold, Italic…). The X3 version (.cpfont) is made automatically.'
+        : 'Choose all the styles at once (Regular, Bold, Italic…). Add .cpfont files too so it installs on the X3.') ?>,
     };
     function syncType() {
       const font = type.value === 'font';
