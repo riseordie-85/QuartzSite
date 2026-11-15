@@ -112,7 +112,7 @@ showcases:
           See what's installed and remove what you don't use.
       - title: Extras
         image: extras.webp
-        alt: The Extras gallery inside the web dashboard, showing overlays with Install and Use buttons.
+        alt: The Extras gallery inside the web dashboard, showing wallpapers with Install and Use buttons.
         text: |
           Browse the Quartz gallery of wallpapers, overlays and fonts without leaving the dashboard.
 
