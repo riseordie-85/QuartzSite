@@ -81,14 +81,15 @@ function pickPrimary(assets: ReleaseAsset[], kind: 'apk' | 'firmware'): ReleaseA
 // Fake data so you can see the download box before publishing a real release.
 // Run `npm run dev:mock` to use it.
 async function mockRelease(repo: string, kind: 'apk' | 'firmware'): Promise<ReleaseInfo> {
-  const name = repo.split('/')[1];
-  const file = kind === 'apk' ? `${name}-1.2.0.apk` : `${name}-1.2.0.bin`;
-  const asset: ReleaseAsset = {
+  const name = repo.split('/')[1].toLowerCase();
+  const files = kind === 'apk' ? [`${name}-1.2.0.apk`] : ['x3-x4', 'x4pro', 'picco'].map((d) => `${name}-1.2.0-${d}.bin`);
+  const assets: ReleaseAsset[] = files.map((file) => ({
     name: file,
     url: `https://github.com/${repo}/releases/download/v1.2.0/${file}`,
-    size: 14_830_112,
+    size: kind === 'apk' ? 14_830_112 : 6_108_176,
     sha256: '3f9a1c0e7b52d84e6a0f2c91b7d3e5a8c4f60b2d9e1a7c3b5d8f0e2a4c6b8d0f',
-  };
+  }));
+  const asset = assets[0];
   return {
     version: 'v1.2.0',
     date: new Date('2026-11-10'),
@@ -96,9 +97,22 @@ async function mockRelease(repo: string, kind: 'apk' | 'firmware'): Promise<Rele
     notesHtml: await marked.parse(
       '- Sample release notes from the mock release.\n- Real notes come from the GitHub release description.\n- Fixed a thing that was broken.',
     ),
-    assets: [asset],
+    assets,
     primary: asset,
   };
+}
+
+// Firmware releases carry one file per reader, e.g. quartzink-1.0.0-x4pro.bin.
+const READERS: [RegExp, string][] = [
+  [/x3-x4/i, 'Xteink X3 / X4'],
+  [/x4-?pro/i, 'Xteink X4 Pro'],
+  [/picco/i, 'Boox Picco'],
+];
+
+export function firmwareFiles(assets: ReleaseAsset[]): { label: string; asset: ReleaseAsset }[] {
+  return assets
+    .filter((a) => a.name.toLowerCase().endsWith('.bin'))
+    .map((asset) => ({ label: READERS.find(([pattern]) => pattern.test(asset.name))?.[1] ?? asset.name, asset }));
 }
 
 export function formatSize(bytes: number): string {
