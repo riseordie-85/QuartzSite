@@ -133,3 +133,17 @@ esptool-js (Web Serial). It supports the Xteink X3/X4, X4 Pro and Boox Picco.
   unless they match the reader picked. X3/X4 and X4 Pro get the app at 0x10000 and a cleared
   otadata (so they boot it even after an SD update). The Picco gets the app at 0xE0000 only;
   its otadata is left alone, because a cleared one would boot its recovery partition.
+
+## Feature tour on an app page (showcase)
+
+An app's Markdown can add a `showcase:` block (see `src/content/apps/quartzink.md`). It shows
+`src/components/Showcase.astro` under the intro: the intro video plays when the tour scrolls
+into view, the reader settles onto the table, and gems switch between screenshots with a
+sheet of text beside them.
+
+- Files live in `public/<dir>/`: `intro.mp4`, `intro-poster.jpg` (first frame), `scene.jpg`
+  (last frame), `device.webp` and `shadow.webp` (cut out of the mockup), plus each slide's
+  image (480×800 screenshots).
+- To change the wording or add a slide, edit the `slides:` list. Blank lines in `text` start a
+  new paragraph.
+- Visitors who ask for reduced motion get the finished scene with no video or animation.

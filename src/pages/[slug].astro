@@ -1,5 +1,6 @@
 ---
 // One page per app, built from the Markdown files in src/content/apps/.
+import Showcase from '../components/Showcase.astro';
 import { getCollection, render } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import AppMark from '../components/AppMark.astro';
@@ -71,6 +72,8 @@ const shots = await Promise.all(
       release={release}
     />
   </section>
+
+  {d.showcase && <Showcase dir={d.showcase.dir} slides={d.showcase.slides} label={`${d.name} tour`} />}
 
   {
     (d.screenshots.length > 0 || showSlots) && (

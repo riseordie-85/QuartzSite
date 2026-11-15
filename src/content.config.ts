@@ -47,6 +47,24 @@ const apps = defineCollection({
         }),
       )
       .default([]),
+    // A guided tour: an intro video, then a device on the table that steps through
+    // screenshots with a sheet of text beside it. Files live in public/<dir>/:
+    // intro.mp4, intro-poster.jpg, scene.jpg, device.webp, shadow.webp, plus each
+    // slide's image. See src/components/Showcase.astro.
+    showcase: z
+      .object({
+        dir: z.string(),
+        slides: z.array(
+          z.object({
+            title: z.string(),
+            // Blank lines start a new paragraph.
+            text: z.string(),
+            image: z.string(),
+            alt: z.string(),
+          }),
+        ),
+      })
+      .optional(),
     // Screenshot slots to show as placeholders until real ones are added.
     screenshotSlots: z.array(z.enum(['phone', 'fold', 'tablet'])).default([]),
     support: z
