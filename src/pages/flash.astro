@@ -1,7 +1,8 @@
 ---
 // Installs QuartzInk over USB from the browser (Web Serial, with Espressif's
-// esptool-js). The firmware comes from the latest-build release through
-// /flash/firmware.php, so there's nothing to download by hand.
+// esptool-js). The firmware comes from GitHub through /flash/firmware.php, so
+// there's nothing to download by hand: the latest release by default, or the
+// latest-build pre-release that CI replaces on every push to main.
 //
 // Where it writes comes from the reader itself: the page reads its partition
 // table and only goes ahead when the chip and layout match the reader picked.
@@ -17,7 +18,7 @@ import Base from '../layouts/Base.astro';
     <div class="flash__head">
       <h1>Install QuartzInk</h1>
       <p class="lede">
-        Installs the latest QuartzInk build over USB, straight from this page. Your books, settings and reading stats
+        Installs the latest QuartzInk release over USB, straight from this page. Your books, settings and reading stats
         live on the SD card and stay as they are.
       </p>
     </div>
@@ -40,7 +41,18 @@ import Base from '../layouts/Base.astro';
             <strong>Boox Picco</strong><span>Touch</span>
           </button>
         </div>
-        <p class="muted build" id="build">Checking for the latest build…</p>
+      </li>
+      <li>
+        <h2>Pick a version</h2>
+        <div class="choices" role="radiogroup" aria-label="Version">
+          <button type="button" role="radio" aria-checked="true" data-channel="release">
+            <strong id="releaseName">Latest release</strong><span id="releaseMeta">Recommended</span>
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-channel="latest">
+            <strong>Newest build</strong><span id="latestMeta">The newest changes, not yet released</span>
+          </button>
+        </div>
+        <p class="muted build" id="build">Checking for QuartzInk's firmware…</p>
       </li>
       <li>
         <h2>Connect it</h2>
@@ -90,10 +102,18 @@ import Base from '../layouts/Base.astro';
   };
 
   type Partition = { type: number; subtype: number; offset: number; size: number; label: string };
-  type BuildInfo = { commit: string; subject: string; published: string; files: Record<string, { name: string; size: number }> };
+  type Channel = 'release' | 'latest';
+  type BuildInfo = {
+    version: string;
+    commit: string;
+    subject: string;
+    published: string;
+    files: Record<string, { name: string; size: number }>;
+  };
 
   let device: Device | null = null;
-  let build: BuildInfo | null = null;
+  let channel: Channel = 'release';
+  const builds: Record<Channel, BuildInfo | null> = { release: null, latest: null };
   let busy = false;
 
   const $ = (id: string) => document.getElementById(id)!;
@@ -126,33 +146,63 @@ import Base from '../layouts/Base.astro';
     return out;
   }
 
+  const shortDate = (iso: string) =>
+    iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
   function renderChoices() {
-    for (const button of document.querySelectorAll<HTMLButtonElement>('.choices button')) {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('.choices button[data-device]')) {
       button.setAttribute('aria-checked', String(button.dataset.device === device));
     }
+    for (const button of document.querySelectorAll<HTMLButtonElement>('.choices button[data-channel]')) {
+      button.setAttribute('aria-checked', String(button.dataset.channel === channel));
+    }
+    const build = builds[channel];
     const ownFile = ($('ownFile') as HTMLInputElement).files?.[0];
     const file = device && build ? build.files[device] : null;
     ($('install') as HTMLButtonElement).disabled = busy || !device || (!file && !ownFile) || !('serial' in navigator);
     ($('restart') as HTMLButtonElement).disabled = busy || !('serial' in navigator);
+    if (ownFile) {
+      $('build').textContent = 'Your file: ' + ownFile.name;
+      return;
+    }
     if (!build) return;
-    const date = build.published ? new Date(build.published).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-    let text = 'Latest build: ' + build.commit + (date ? ' · ' + date : '');
-    if (build.subject) text += ' · ' + build.subject;
+    const date = shortDate(build.published);
+    let text =
+      channel === 'release'
+        ? 'QuartzInk ' + build.version + (date ? ' · released ' + date : '')
+        : 'Newest build ' + build.commit + (date ? ' · ' + date : '') + (build.subject ? ' · ' + build.subject : '');
     if (file) text += ' · ' + (file.size / 1048576).toFixed(1) + ' MB';
-    if (ownFile) text = 'Your file: ' + ownFile.name;
+    else if (device) text += ' · no file for this reader';
     $('build').textContent = text;
   }
 
-  async function loadBuild() {
+  async function loadChannel(which: Channel) {
     try {
-      const response = await fetch('/flash/firmware.php', { cache: 'no-store' });
+      const response = await fetch('/flash/firmware.php?channel=' + which, { cache: 'no-store' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || response.statusText);
-      // The release notes start "Built from <sha>: <commit subject>".
-      const subject = String(data.notes || '').split('\n')[0].replace(/^Built from [0-9a-f]+:\s*/, '');
-      build = { ...data, subject };
+      // The latest build's notes start "Built from <sha>: <commit subject>".
+      const subject = which === 'latest' ? String(data.notes || '').split('\n')[0].replace(/^Built from [0-9a-f]+:\s*/, '') : '';
+      builds[which] = { ...data, subject };
     } catch (error) {
-      $('build').textContent = 'Could not find the latest build (' + (error as Error).message + '). You can still install a .bin file of your own below.';
+      console.warn('Could not load the ' + which + ' firmware:', error);
+    }
+  }
+
+  async function loadBuilds() {
+    await Promise.all([loadChannel('release'), loadChannel('latest')]);
+    const release = builds.release;
+    const latest = builds.latest;
+    if (release) {
+      $('releaseName').textContent = 'QuartzInk ' + release.version;
+      $('releaseMeta').textContent = 'Recommended · ' + shortDate(release.published);
+    } else {
+      $('releaseMeta').textContent = 'Not available right now';
+      if (latest) channel = 'latest';
+    }
+    if (latest) $('latestMeta').textContent = 'Not yet released · ' + latest.commit + ' · ' + shortDate(latest.published);
+    if (!release && !latest) {
+      $('build').textContent = "Could not reach QuartzInk's firmware. You can still install a .bin file of your own below.";
     }
     renderChoices();
   }
@@ -210,7 +260,7 @@ import Base from '../layouts/Base.astro';
     const own = ($('ownFile') as HTMLInputElement).files?.[0];
     if (own) return new Uint8Array(await own.arrayBuffer());
     status('Downloading the firmware…', 0);
-    const response = await fetch('/flash/firmware.php?device=' + target, { cache: 'no-store' });
+    const response = await fetch('/flash/firmware.php?channel=' + channel + '&device=' + target, { cache: 'no-store' });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       throw new Error(data.error || 'Download failed (' + response.status + ')');
@@ -307,14 +357,16 @@ import Base from '../layouts/Base.astro';
   if (!('serial' in navigator)) $('unsupported').hidden = false;
   for (const button of document.querySelectorAll<HTMLButtonElement>('.choices button')) {
     button.addEventListener('click', () => {
-      device = button.dataset.device as Device;
+      if (busy) return;
+      if (button.dataset.device) device = button.dataset.device as Device;
+      if (button.dataset.channel) channel = button.dataset.channel as Channel;
       renderChoices();
     });
   }
   $('ownFile').addEventListener('change', renderChoices);
   $('install').addEventListener('click', install);
   $('restart').addEventListener('click', restartOnly);
-  loadBuild();
+  loadBuilds();
 </script>
 
 <style>

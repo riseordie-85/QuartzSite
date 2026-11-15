@@ -1,20 +1,27 @@
 <?php
-// Serves QuartzInk firmware to the flasher page (/flash/).
+// Serves QuartzInk firmware to the install page (/flash/).
 //
 // Browsers can't download GitHub release files directly (GitHub sends no
 // CORS headers), so this fetches them on the server and serves them from
-// this site. It reads the "latest-build" release, which QuartzInk's CI
-// replaces on every push to main, and keeps one cached copy per device.
+// this site, keeping one cached copy per channel and device.
 //
-//   firmware.php                 JSON: the build (commit, date) and each device's file and size
-//   firmware.php?device=picco    the .bin (x3-x4, x4-pro or picco)
+// Channels:
+//   release   the latest full release, e.g. quartzink-1.0.0-x4pro.bin (default)
+//   latest    the latest-build pre-release that CI replaces on every push to
+//             main, e.g. quartzink-x4-pro.bin
+//
+//   firmware.php?channel=release                 JSON: the version or commit, date and each device's file
+//   firmware.php?channel=release&device=picco    the .bin (x3-x4, x4-pro or picco)
 //
 // Written for PHP 7.4 and newer.
 
 declare(strict_types=1);
 
 const REPO = 'riseordie-85/QuartzInk';
-const RELEASE_TAG = 'latest-build';
+const CHANNELS = [
+    'release' => 'releases/latest',
+    'latest' => 'releases/tags/latest-build',
+];
 const DEVICES = ['x3-x4', 'x4-pro', 'picco'];
 const CACHE_DIR = __DIR__ . '/cache';
 const RELEASE_TTL = 300; // seconds between GitHub checks (its anonymous limit is 60 an hour)
@@ -58,17 +65,27 @@ function ensure_cache_dir(): void
     }
 }
 
-// The release, from GitHub at most every RELEASE_TTL seconds.
-function release(): array
+// Which device a release file is for. Releases name the X4 Pro "x4pro" (the
+// reader's own update check needs that), the latest build "x4-pro".
+function device_of(string $name): ?string
 {
-    $path = CACHE_DIR . '/release.json';
+    if (!preg_match('/^quartzink-(?:[0-9][0-9A-Za-z.+-]*-)?(x3-x4|x4-?pro|picco)\.bin$/', $name, $m)) {
+        return null;
+    }
+    return $m[1] === 'x4pro' ? 'x4-pro' : $m[1];
+}
+
+// The channel's release, from GitHub at most every RELEASE_TTL seconds.
+function release(string $channel): array
+{
+    $path = CACHE_DIR . '/channel-' . $channel . '.json';
     if (is_file($path) && time() - filemtime($path) < RELEASE_TTL) {
         $cached = json_decode((string)file_get_contents($path), true);
         if (is_array($cached)) {
             return $cached;
         }
     }
-    $body = http_get('https://api.github.com/repos/' . REPO . '/releases/tags/' . RELEASE_TAG, true);
+    $body = http_get('https://api.github.com/repos/' . REPO . '/' . CHANNELS[$channel], true);
     $data = $body !== null ? json_decode($body, true) : null;
     if (!is_array($data) || empty($data['assets'])) {
         // GitHub unreachable or rate-limited: an older answer beats none.
@@ -76,23 +93,24 @@ function release(): array
         if (is_array($stale)) {
             return $stale;
         }
-        fail(502, 'Could not read the latest QuartzInk build from GitHub. Try again in a minute.');
+        fail(502, 'Could not read QuartzInk\'s firmware from GitHub. Try again in a minute.');
     }
+    $tag = (string)($data['tag_name'] ?? '');
     $release = [
-        'commit' => substr((string)($data['target_commitish'] ?? ''), 0, 7),
-        'title' => (string)($data['name'] ?? ''),
+        'version' => $channel === 'release' ? ltrim($tag, 'v') : '',
+        'commit' => $channel === 'latest' ? substr((string)($data['target_commitish'] ?? ''), 0, 7) : '',
         'notes' => (string)($data['body'] ?? ''),
         'published' => (string)($data['published_at'] ?? ''),
         'files' => [],
     ];
     foreach ($data['assets'] as $asset) {
-        if (preg_match('/^quartzink-([a-z0-9-]+)\.bin$/', (string)$asset['name'], $m) && in_array($m[1], DEVICES, true)) {
-            $release['files'][$m[1]] = [
+        $device = device_of((string)$asset['name']);
+        if ($device !== null) {
+            $release['files'][$device] = [
                 'id' => (int)$asset['id'],
                 'name' => (string)$asset['name'],
                 'size' => (int)$asset['size'],
                 'url' => (string)$asset['browser_download_url'],
-                'updated' => (string)$asset['updated_at'],
             ];
         }
     }
@@ -101,8 +119,13 @@ function release(): array
     return $release;
 }
 
+$channel = (string)($_GET['channel'] ?? 'release');
+if (!isset(CHANNELS[$channel])) {
+    fail(404, 'Unknown channel.');
+}
 ensure_cache_dir();
-$release = release();
+@unlink(CACHE_DIR . '/release.json'); // from before channels existed
+$release = release($channel);
 $device = (string)($_GET['device'] ?? '');
 
 if ($device === '') {
@@ -113,8 +136,8 @@ if ($device === '') {
         $files[$key] = ['name' => $file['name'], 'size' => $file['size']];
     }
     echo json_encode([
+        'version' => $release['version'],
         'commit' => $release['commit'],
-        'title' => $release['title'],
         'notes' => $release['notes'],
         'published' => $release['published'],
         'files' => $files,
@@ -127,11 +150,12 @@ if (!in_array($device, DEVICES, true)) {
 }
 $file = $release['files'][$device] ?? null;
 if ($file === null) {
-    fail(404, 'The latest build has no firmware for this device.');
+    fail(404, 'This firmware has no file for this reader.');
 }
 
-// One cached copy per device, named for the asset it came from.
-$cached = CACHE_DIR . '/' . $device . '-' . $file['id'] . '.bin';
+// One cached copy per channel and device, named for the asset it came from.
+$prefix = CACHE_DIR . '/' . $channel . '-' . $device . '-';
+$cached = $prefix . $file['id'] . '.bin';
 if (!is_file($cached) || filesize($cached) !== $file['size']) {
     $bin = http_get($file['url'], false);
     if ($bin === null || strlen($bin) !== $file['size'] || strlen($bin) > MAX_BIN_BYTES || ord($bin[0]) !== 0xE9) {
@@ -139,9 +163,11 @@ if (!is_file($cached) || filesize($cached) !== $file['size']) {
     }
     file_put_contents($cached . '.tmp', $bin);
     rename($cached . '.tmp', $cached);
-    foreach (glob(CACHE_DIR . '/' . $device . '-*.bin') ?: [] as $old) {
-        if ($old !== $cached) {
-            unlink($old);
+    // Older copies of this file, and copies from before channels existed.
+    $old = array_merge(glob($prefix . '*.bin') ?: [], glob(CACHE_DIR . '/' . $device . '-[0-9]*.bin') ?: []);
+    foreach ($old as $stale) {
+        if ($stale !== $cached) {
+            unlink($stale);
         }
     }
 }
@@ -150,5 +176,4 @@ header('Content-Type: application/octet-stream');
 header('Content-Length: ' . filesize($cached));
 header('Content-Disposition: attachment; filename="' . $file['name'] . '"');
 header('Cache-Control: no-store');
-header('X-QuartzInk-Commit: ' . $release['commit']);
 readfile($cached);
