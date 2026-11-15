@@ -2,7 +2,7 @@
 name: QuartzInk
 tagline: Quartz-style firmware for e-readers.
 summary: Firmware for the Xteink X3, X4 Pro and Boox Picco with the Quartz look, built on CrossPoint.
-status: in-development
+status: released
 stone: clear
 order: 6
 platforms: [e-reader]
