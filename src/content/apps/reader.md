@@ -14,11 +14,11 @@ features:
   - title: One library for everything
     text: EPUB, CBZ, CBR, CB7, ZIP, PDF and folders of images, sorted into Books, Comics, Manga and Manhwa, with each series kept together.
   - title: Shelves with their own style
-    text: Make shelves for anything, and give each one its own header, background, books and buttons. Black & White to start, or build your own in the style editor.
+    text: Make shelves for anything, and give each one its own header, background, books and buttons. Black and White to start, or build your own in the style editor.
   - title: A Home you arrange
     text: Recently Read, your Read List, shelf rows, goals and reading stats, in the order you choose. Hold Home to move things around.
   - title: Made for folding phones and tablets
-    text: Unfold and the shelf sits beside large covers with each book's details. On a phone, one tap shows a book's details and a second opens it.
+    text: Unfold and the shelf sits beside large covers with each book's details. On a phone, one tap shows a book's cover and details before you open it.
   - title: Reading the way each type reads
     text: EPUBs with screen-tuned fonts, highlights, notes and bookmarks. Comics page by page or in spreads, manga right to left, and manhwa as one long strip.
   - title: Stats, goals and achievements
